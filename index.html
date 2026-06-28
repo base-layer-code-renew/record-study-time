@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Hockey: Skill Buttons</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { margin: 0; background: #000; color: #fff; font-family: 'Arial Black', sans-serif; overflow: hidden; touch-action: none; }
+        canvas { display: block; }
+        #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; text-align: center; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+        h1 { color: #00ff88; font-size: 32px; margin-bottom: 20px; text-shadow: 0 0 20px #00ff88; }
+        .setup-box { background: #1a1a1a; padding: 20px; border-radius: 20px; border: 2px solid #444; width: 340px; margin: 10px 0; box-sizing: border-box; }
+        .room-id { font-size: 28px; color: #ff0055; background: #000; padding: 15px; border-radius: 10px; margin: 15px 0; border: 2px dashed #ff0055; min-height: 40px; }
+        .settings { background: #111; padding: 15px; border-radius: 15px; text-align: left; border: 1px solid #333; margin-top: 10px; }
+        .settings label { display: block; margin: 8px 0; font-size: 14px; cursor: pointer; }
+        .btn { font-size: 18px; padding: 12px; cursor: pointer; border-radius: 50px; font-weight: bold; border: none; width: 100%; transition: 0.2s; margin-top: 10px; }
+        .btn-start { background: #fff; color: #000; }
+        .btn-start:disabled { background: #333; color: #666; cursor: not-allowed; }
+        .btn-guest { background: #00ccff; color: #000; }
+        input[type="text"] { width: 100%; padding: 12px; font-size: 20px; border-radius: 10px; border: none; text-align: center; box-sizing: border-box; background: #222; color: #fff; }
+        #ui { position: fixed; top: 10px; width: 100%; display: flex; justify-content: center; gap: 50px; font-size: 50px; opacity: 0.5; pointer-events: none; z-index: 10; }
+        #item-notice { position: fixed; top: 20%; width: 100%; text-align: center; font-size: 40px; color: #ff0; pointer-events: none; display: none; z-index: 50; }
+        
+        /* スキルボタンのスタイル */
+        .skill-controls { position: fixed; bottom: 20px; display: flex; gap: 15px; z-index: 60; display: none; }
+        #p1-controls { left: 20px; flex-direction: column; }
+        #p2-controls { right: 20px; flex-direction: column; align-items: flex-end; }
+        .skill-btn { 
+            width: 65px; height: 65px; border-radius: 50%; border: 3px solid #fff; 
+            background: rgba(0,0,0,0.6); color: #fff; font-size: 12px; font-weight: bold;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; user-select: none; touch-action: manipulation;
+        }
+        .skill-btn:active { transform: scale(0.9); }
+        .skill-btn progress { width: 40px; height: 6px; margin-top: 5px; }
+        
+        #win-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; }
+    </style>
+</head>
+<body>
+
+<div id="ui"><span id="s1">0</span> - <span id="s2">0</span></div>
+<div id="item-notice">ITEM!</div>
+
+<div id="menu">
+    <h1>NEON HOCKEY</h1>
+    <div class="setup-box">
+        <div id="my-id" class="room-id">発行中...</div>
+        <div id="host-config" class="settings">
+            <label><input type="checkbox" id="enableItems" checked> アイテム出現</label>
+            <label><input type="checkbox" id="enableSkills" checked> 能力（スキル）使用</label>
+            <label><input type="checkbox" id="enableLimit" checked> 移動制限あり</label>
+            <label>勝利スコア: <input type="number" id="winScore" value="5" min="1"></label>
+        </div>
+        <button id="start-btn" class="btn btn-start" disabled onclick="sendStart()">2Pを待機中...</button>
+    </div>
+    <div class="setup-box" style="border-color: #00ccff;">
+        <input type="text" id="join-id" placeholder="コードを入力">
+        <button class="btn btn-guest" onclick="joinRoom()">接続する</button>
+        <div id="guest-msg" style="font-size:12px; color:#00ccff; margin-top:5px;"></div>
+    </div>
+</div>
+
+<div id="p1-controls" class="skill-controls">
+    <div class="skill-btn" style="border-color: #ff0055;" onpointerdown="handleSkillBtn('KeyQ')">SHOCK<progress id="p1-q-btn" value="0" max="100"></progress></div>
+    <div class="skill-btn" style="border-color: #ff0055;" onpointerdown="handleSkillBtn('KeyW')">TIME<progress id="p1-w-btn" value="0" max="100"></progress></div>
+    <div class="skill-btn" style="border-color: #ff0055;" onpointerdown="handleSkillBtn('KeyE')">GROW<progress id="p1-e-btn" value="0" max="100"></progress></div>
+</div>
+
+<div id="p2-controls" class="skill-controls">
+    <div class="skill-btn" style="border-color: #00ccff;" onpointerdown="handleSkillBtn('KeyI')">SHOCK<progress id="p2-q-btn" value="0" max="100"></progress></div>
+    <div class="skill-btn" style="border-color: #00ccff;" onpointerdown="handleSkillBtn('KeyO')">TIME<progress id="p2-w-btn" value="0" max="100"></progress></div>
+    <div class="skill-btn" style="border-color: #00ccff;" onpointerdown="handleSkillBtn('KeyP')">GROW<progress id="p2-e-btn" value="0" max="100"></progress></div>
+</div>
+
+<div id="win-screen">
+    <h1 id="win-text" style="font-size:60px; color:#fff;">WIN!</h1>
+    <button class="btn" onclick="location.reload()" style="width:200px; background:#fff;">MENU BACK</button>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const itemNotice = document.getElementById('item-notice');
+let peer, conn, isHost = false, gameActive = false;
+let w, h, balls = [], p1, p2, items = [], particles = [], score = [0, 0];
+let conf = { items: true, skills: true, limit: true, win: 5 }, timeFrozen = 0, ballGhost = 0;
+
+const P_RAD = 35; 
+const COOL = { Q: 250, W: 600, E: 900 }; 
+const ITEM_TYPES = [
+    {n:'BIG', c:'#0f0', f:(p)=>p.tR=85},
+    {n:'TINY', c:'#f00', f:(p,o)=>o.tR=15},
+    {n:'WEAK', c:'#f80', f:(p,o)=>o.weak=300}, 
+    {n:'BALL+', c:'#ff0', f:()=>createBall()},
+    {n:'FREEZE', c:'#0ff', f:(p,o)=>o.frozen=150},
+    {n:'REVERSE', c:'#f00', f:(p,o)=>o.rev=200},
+    {n:'GHOST', c:'#fff', f:()=>ballGhost=180},
+    {n:'POWER', c:'#0f0', f:(p)=>p.powerUp=300},
+    {n:'BOMB', c:'#ff4500', f:(p,o,b)=>{ b.vx*=-1.1; b.vy*=-1.1; createParticles(b.x,b.y,'#ff0'); }},
+    {n:'GRAVITY', c:'#9370db', f:(p)=>p.grav=180}
+];
+
+function initPeer() {
+    peer = new Peer(Math.floor(1000 + Math.random() * 9000).toString());
+    peer.on('open', id => document.getElementById('my-id').innerText = id);
+    peer.on('connection', c => {
+        conn = c; isHost = true;
+        document.getElementById('start-btn').disabled = false;
+        document.getElementById('start-btn').innerText = "GAME START";
+        setupConn();
+    });
+}
+
+function joinRoom() {
+    const tid = document.getElementById('join-id').value;
+    if(!tid) return;
+    conn = peer.connect(tid);
+    conn.on('open', () => {
+        isHost = false;
+        document.getElementById('guest-msg').innerText = "接続成功！";
+        setupConn();
+    });
+}
+
+function setupConn() {
+    conn.on('data', data => {
+        if (data.type === 'start') { conf = data.s; startGame(); }
+        if (data.type === 'sync') {
+            if (isHost) { 
+                p2.x = data.p2.x; p2.y = data.p2.y; p2.q = data.p2.q; p2.w = data.p2.w; p2.e = data.p2.e; p2.r = data.p2.r;
+            } else {
+                p1.x = data.p1.x; p1.y = data.p1.y; p1.q = data.p1.q; p1.w = data.p1.w; p1.e = data.p1.e; p1.r = data.p1.r;
+                balls = data.balls; items = data.items; score = data.score; particles = data.particles;
+                timeFrozen = data.timeFrozen; ballGhost = data.ballGhost;
+                if (data.gameOver) showWin(data.winText);
+            }
+        }
+        if (data.type === 'skill') executeSkill(data.key, isHost ? p2 : p1);
+    });
+}
+
+function sendStart() {
+    conf = {
+        items: document.getElementById('enableItems').checked,
+        skills: document.getElementById('enableSkills').checked,
+        limit: document.getElementById('enableLimit').checked,
+        win: parseInt(document.getElementById('winScore').value) || 5
+    };
+    conn.send({ type: 'start', s: conf });
+    startGame();
+}
+
+function startGame() {
+    document.getElementById('menu').style.display = "none";
+    w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight;
+    const b = { lx:0, ly:0, vx:0, vy:0, r:P_RAD, tR:P_RAD, frozen:0, rev:0, weak:0, powerUp:0, grav:0 };
+    p1 = { ...b, x:100, y:h/2, color:'#ff0055', q:COOL.Q, w:COOL.W, e:COOL.E };
+    p2 = { ...b, x:w-100, y:h/2, color:'#00ccff', q:COOL.Q, w:COOL.W, e:COOL.E };
+    
+    if (conf.skills) {
+        document.getElementById(isHost ? 'p1-controls' : 'p2-controls').style.display = 'flex';
+    }
+    if (isHost) { createBall(); if (conf.items) setTimeout(spawnItem, 3000); }
+    gameActive = true; update();
+}
+
+// 画面ボタン・キーボード共通のスキル発動処理
+function handleSkillBtn(key) {
+    if (!gameActive || !conf.skills) return;
+    const p = isHost ? p1 : p2;
+    // 自分側のキー/ボタンかチェック
+    const isMine = (isHost && ['KeyQ','KeyW','KeyE'].includes(key)) || (!isHost && ['KeyI','KeyO','KeyP'].includes(key));
+    if (isMine) {
+        const sType = key.slice(-1).replace('I','Q').replace('O','W').replace('P','E');
+        if (p[sType.toLowerCase()] >= COOL[sType]) {
+            executeSkill(key, p); 
+            p[sType.toLowerCase()] = 0;
+            conn.send({ type: 'skill', key: key });
+        }
+    }
+}
+
+window.addEventListener('keydown', e => handleSkillBtn(e.code));
+
+function executeSkill(key, p) {
+    if (['KeyQ','KeyI'].includes(key)) {
+        balls.forEach(b => { if(Math.hypot(b.x-p.x, b.y-p.y)<220){ b.vx=(p===p1?22:-22); createParticles(b.x, b.y, p.color); } });
+    } else if (['KeyW','KeyO'].includes(key)) {
+        timeFrozen = 100;
+    } else if (['KeyE','KeyP'].includes(key)) {
+        p.tR = 130; setTimeout(()=>p.tR=P_RAD, 4000);
+    }
+}
+
+function createBall() { 
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 4;
+    balls.push({ x:w/2, y:h/2, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, r:12, lastP:null }); 
+}
+
+function createParticles(x, y, color) { for(let i=0; i<8; i++) particles.push({ x, y, vx:(Math.random()-0.5)*5, vy:(Math.random()-0.5)*5, life:20, color }); }
+
+function spawnItem() {
+    if (!gameActive || !conf.items || !isHost) return;
+    const t = ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
+    items.push({ x: w/4 + Math.random()*w/2, y: Math.random()*(h-100)+50, n:t.n, c:t.c, typeIdx: ITEM_TYPES.indexOf(t) });
+    setTimeout(spawnItem, 5000);
+}
+
+function showWin(txt) {
+    gameActive = false;
+    document.getElementById('win-screen').style.display='flex';
+    document.getElementById('win-text').innerText = txt;
+}
+
+canvas.addEventListener('pointermove', e => {
+    if (!gameActive) return;
+    const p = isHost ? p1 : p2;
+    if (p.frozen > 0) return;
+    let tx = e.clientX, ty = p.rev > 0 ? h - e.clientY : e.clientY;
+    p.x = tx; p.y = ty;
+    if (conf.limit) {
+        if (isHost && p.x > w/2 - p.r) p.x = w/2 - p.r;
+        if (!isHost && p.x < w/2 + p.r) p.x = w/2 + p.r;
+    }
+});
+
+function update() {
+    if (!gameActive) return;
+    if (timeFrozen > 0) { timeFrozen--; } else {
+        if (isHost) {
+            if (ballGhost > 0) ballGhost--;
+            balls.forEach((b, bi) => {
+                b.x += b.vx; b.y += b.vy; b.vx *= 0.998; b.vy *= 0.998;
+                if (b.y < b.r || b.y > h - b.r) { b.vy *= -1; b.y = b.y<b.r?b.r:h-b.r; createParticles(b.x, b.y, '#fff'); }
+                [p1, p2].forEach(p => {
+                    const dist = Math.hypot(b.x-p.x, b.y-p.y);
+                    if (p.grav > 0 && dist < 250) { b.vx += (p.x - b.x) * 0.01; b.vy += (p.y - b.y) * 0.01; }
+                    if (dist < b.r + p.r) {
+                        const ang = Math.atan2(b.y-p.y, b.x-p.x);
+                        let pow = 0.7;
+                        if(p.weak > 0) pow = 0.05;
+                        else if(p.powerUp > 0) pow = 1.1;
+                        b.vx = Math.cos(ang)*12 + (p.x-p.lx)*pow; b.vy = Math.sin(ang)*12 + (p.y-p.ly)*pow;
+                        b.lastP = p; createParticles(b.x, b.y, p.color);
+                    }
+                });
+                items = items.filter(it => {
+                    if (Math.hypot(b.x-it.x, b.y-it.y) < b.r+35) {
+                        if(b.lastP) ITEM_TYPES[it.typeIdx].f(b.lastP, b.lastP===p1?p2:p1, b);
+                        itemNotice.innerText = it.n; itemNotice.style.display = 'block';
+                        setTimeout(()=>itemNotice.style.display='none', 800);
+                        createParticles(it.x, it.y, it.c);
+                        return false;
+                    } return true;
+                });
+                if (b.x < 0) { score[1]++; balls.splice(bi, 1); if(balls.length==0) createBall(); }
+                if (b.x > w) { score[0]++; balls.splice(bi, 1); if(balls.length==0) createBall(); }
+            });
+            let gameOver = false, winText = "";
+            if (score[0] >= conf.win) { gameOver = true; winText = "1P WIN!"; }
+            if (score[1] >= conf.win) { gameOver = true; winText = "2P WIN!"; }
+            if (gameOver) showWin(winText);
+
+            [p1, p2].forEach(p => {
+                p.vx = p.x-p.lx; p.vy = p.y-p.ly; p.lx = p.x; p.ly = p.y;
+                p.r += (p.tR - p.r) * 0.1;
+                if(p.q < COOL.Q) p.q++; if(p.w < COOL.W) p.w++; if(p.e < COOL.E) p.e++;
+                if(p.frozen > 0) p.frozen--; if(p.rev > 0) p.rev--; if(p.weak > 0) p.weak--;
+                if(p.powerUp > 0) p.powerUp--; if(p.grav > 0) p.grav--;
+            });
+            conn.send({ type: 'sync', p1, balls, items, score, particles, timeFrozen, ballGhost, gameOver, winText });
+        } else {
+            p2.vx = p2.x-p2.lx; p2.vy = p2.y-p2.ly; p2.lx = p2.x; p2.ly = p2.y;
+            p2.r += (p2.tR - p2.r) * 0.1;
+            if(p2.q < COOL.Q) p2.q++; if(p2.w < COOL.W) p2.w++; if(p2.e < COOL.E) p2.e++;
+            if(p2.frozen > 0) p2.frozen--; if(p2.rev > 0) p2.rev--; if(p2.weak > 0) p2.weak--;
+            if(p2.powerUp > 0) p2.powerUp--; if(p2.grav > 0) p2.grav--;
+            conn.send({ type: 'sync', p2 });
+        }
+    }
+    particles.forEach((p, i) => { p.x+=p.vx; p.y+=p.vy; p.life--; if(p.life<=0) particles.splice(i,1); });
+    draw();
+    requestAnimationFrame(update);
+}
+
+function draw() {
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,w,h);
+    if (conf.limit) { ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.moveTo(w/2,0); ctx.lineTo(w/2,h); ctx.stroke(); }
+    particles.forEach(p => { ctx.globalAlpha = p.life/20; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 4, 4); });
+    ctx.globalAlpha = 1;
+    items.forEach(it => { 
+        ctx.fillStyle = it.c; ctx.font = 'bold 22px sans-serif'; ctx.textAlign='center'; 
+        ctx.shadowBlur = 10; ctx.shadowColor = it.c;
+        ctx.fillText(it.n, it.x, it.y); 
+        ctx.shadowBlur = 0;
+    });
+    [p1, p2].forEach(p => {
+        ctx.shadowBlur = 20; ctx.shadowColor = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        if(p.weak > 0) ctx.fillStyle = '#333';
+        else if(p.powerUp > 0) { ctx.fillStyle = '#fff'; ctx.shadowBlur = 40; }
+        else ctx.fillStyle = p.color;
+        ctx.fill(); ctx.shadowBlur = 0;
+    });
+    balls.forEach(b => { 
+        ctx.globalAlpha = ballGhost > 0 ? 0.2 : 1.0;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.shadowBlur = 10; ctx.shadowColor = '#fff';
+    });
+    ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
+    document.getElementById('s1').innerText = score[0]; document.getElementById('s2').innerText = score[1];
+    
+    // スキルゲージ更新
+    document.getElementById('p1-q-btn').value = (p1.q/COOL.Q)*100;
+    document.getElementById('p1-w-btn').value = (p1.w/COOL.W)*100;
+    document.getElementById('p1-e-btn').value = (p1.e/COOL.E)*100;
+    document.getElementById('p2-q-btn').value = (p2.q/COOL.Q)*100;
+    document.getElementById('p2-w-btn').value = (p2.w/COOL.W)*100;
+    document.getElementById('p2-e-btn').value = (p2.e/COOL.E)*100;
+}
+initPeer();
+</script>
+</body>
+</html>
