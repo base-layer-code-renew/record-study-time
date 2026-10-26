@@ -1,327 +1,1204 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Hockey: Skill Buttons</title>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <style>
-        body { margin: 0; background: #000; color: #fff; font-family: 'Arial Black', sans-serif; overflow: hidden; touch-action: none; }
-        canvas { display: block; }
-        #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; text-align: center; overflow-y: auto; padding: 20px; box-sizing: border-box; }
-        h1 { color: #00ff88; font-size: 32px; margin-bottom: 20px; text-shadow: 0 0 20px #00ff88; }
-        .setup-box { background: #1a1a1a; padding: 20px; border-radius: 20px; border: 2px solid #444; width: 340px; margin: 10px 0; box-sizing: border-box; }
-        .room-id { font-size: 28px; color: #ff0055; background: #000; padding: 15px; border-radius: 10px; margin: 15px 0; border: 2px dashed #ff0055; min-height: 40px; }
-        .settings { background: #111; padding: 15px; border-radius: 15px; text-align: left; border: 1px solid #333; margin-top: 10px; }
-        .settings label { display: block; margin: 8px 0; font-size: 14px; cursor: pointer; }
-        .btn { font-size: 18px; padding: 12px; cursor: pointer; border-radius: 50px; font-weight: bold; border: none; width: 100%; transition: 0.2s; margin-top: 10px; }
-        .btn-start { background: #fff; color: #000; }
-        .btn-start:disabled { background: #333; color: #666; cursor: not-allowed; }
-        .btn-guest { background: #00ccff; color: #000; }
-        input[type="text"] { width: 100%; padding: 12px; font-size: 20px; border-radius: 10px; border: none; text-align: center; box-sizing: border-box; background: #222; color: #fff; }
-        #ui { position: fixed; top: 10px; width: 100%; display: flex; justify-content: center; gap: 50px; font-size: 50px; opacity: 0.5; pointer-events: none; z-index: 10; }
-        #item-notice { position: fixed; top: 20%; width: 100%; text-align: center; font-size: 40px; color: #ff0; pointer-events: none; display: none; z-index: 50; }
-        
-        /* スキルボタンのスタイル */
-        .skill-controls { position: fixed; bottom: 20px; display: flex; gap: 15px; z-index: 60; display: none; }
-        #p1-controls { left: 20px; flex-direction: column; }
-        #p2-controls { right: 20px; flex-direction: column; align-items: flex-end; }
-        .skill-btn { 
-            width: 65px; height: 65px; border-radius: 50%; border: 3px solid #fff; 
-            background: rgba(0,0,0,0.6); color: #fff; font-size: 12px; font-weight: bold;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            cursor: pointer; user-select: none; touch-action: manipulation;
-        }
-        .skill-btn:active { transform: scale(0.9); }
-        .skill-btn progress { width: 40px; height: 6px; margin-top: 5px; }
-        
-        #win-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; }
-    </style>
-</head>
-<body>
-
-<div id="ui"><span id="s1">0</span> - <span id="s2">0</span></div>
-<div id="item-notice">ITEM!</div>
-
-<div id="menu">
-    <h1>NEON HOCKEY</h1>
-    <div class="setup-box">
-        <div id="my-id" class="room-id">発行中...</div>
-        <div id="host-config" class="settings">
-            <label><input type="checkbox" id="enableItems" checked> アイテム出現</label>
-            <label><input type="checkbox" id="enableSkills" checked> 能力（スキル）使用</label>
-            <label><input type="checkbox" id="enableLimit" checked> 移動制限あり</label>
-            <label>勝利スコア: <input type="number" id="winScore" value="5" min="1"></label>
-        </div>
-        <button id="start-btn" class="btn btn-start" disabled onclick="sendStart()">2Pを待機中...</button>
-    </div>
-    <div class="setup-box" style="border-color: #00ccff;">
-        <input type="text" id="join-id" placeholder="コードを入力">
-        <button class="btn btn-guest" onclick="joinRoom()">接続する</button>
-        <div id="guest-msg" style="font-size:12px; color:#00ccff; margin-top:5px;"></div>
-    </div>
-</div>
-
-<div id="p1-controls" class="skill-controls">
-    <div class="skill-btn" style="border-color: #ff0055;" onpointerdown="handleSkillBtn('KeyQ')">SHOCK<progress id="p1-q-btn" value="0" max="100"></progress></div>
-    <div class="skill-btn" style="border-color: #ff0055;" onpointerdown="handleSkillBtn('KeyW')">TIME<progress id="p1-w-btn" value="0" max="100"></progress></div>
-    <div class="skill-btn" style="border-color: #ff0055;" onpointerdown="handleSkillBtn('KeyE')">GROW<progress id="p1-e-btn" value="0" max="100"></progress></div>
-</div>
-
-<div id="p2-controls" class="skill-controls">
-    <div class="skill-btn" style="border-color: #00ccff;" onpointerdown="handleSkillBtn('KeyI')">SHOCK<progress id="p2-q-btn" value="0" max="100"></progress></div>
-    <div class="skill-btn" style="border-color: #00ccff;" onpointerdown="handleSkillBtn('KeyO')">TIME<progress id="p2-w-btn" value="0" max="100"></progress></div>
-    <div class="skill-btn" style="border-color: #00ccff;" onpointerdown="handleSkillBtn('KeyP')">GROW<progress id="p2-e-btn" value="0" max="100"></progress></div>
-</div>
-
-<div id="win-screen">
-    <h1 id="win-text" style="font-size:60px; color:#fff;">WIN!</h1>
-    <button class="btn" onclick="location.reload()" style="width:200px; background:#fff;">MENU BACK</button>
-</div>
-
-<canvas id="game"></canvas>
-
-<script>
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-const itemNotice = document.getElementById('item-notice');
-let peer, conn, isHost = false, gameActive = false;
-let w, h, balls = [], p1, p2, items = [], particles = [], score = [0, 0];
-let conf = { items: true, skills: true, limit: true, win: 5 }, timeFrozen = 0, ballGhost = 0;
-
-const P_RAD = 35; 
-const COOL = { Q: 250, W: 600, E: 900 }; 
-const ITEM_TYPES = [
-    {n:'BIG', c:'#0f0', f:(p)=>p.tR=85},
-    {n:'TINY', c:'#f00', f:(p,o)=>o.tR=15},
-    {n:'WEAK', c:'#f80', f:(p,o)=>o.weak=300}, 
-    {n:'BALL+', c:'#ff0', f:()=>createBall()},
-    {n:'FREEZE', c:'#0ff', f:(p,o)=>o.frozen=150},
-    {n:'REVERSE', c:'#f00', f:(p,o)=>o.rev=200},
-    {n:'GHOST', c:'#fff', f:()=>ballGhost=180},
-    {n:'POWER', c:'#0f0', f:(p)=>p.powerUp=300},
-    {n:'BOMB', c:'#ff4500', f:(p,o,b)=>{ b.vx*=-1.1; b.vy*=-1.1; createParticles(b.x,b.y,'#ff0'); }},
-    {n:'GRAVITY', c:'#9370db', f:(p)=>p.grav=180}
-];
-
-function initPeer() {
-    peer = new Peer(Math.floor(1000 + Math.random() * 9000).toString());
-    peer.on('open', id => document.getElementById('my-id').innerText = id);
-    peer.on('connection', c => {
-        conn = c; isHost = true;
-        document.getElementById('start-btn').disabled = false;
-        document.getElementById('start-btn').innerText = "GAME START";
-        setupConn();
-    });
-}
-
-function joinRoom() {
-    const tid = document.getElementById('join-id').value;
-    if(!tid) return;
-    conn = peer.connect(tid);
-    conn.on('open', () => {
-        isHost = false;
-        document.getElementById('guest-msg').innerText = "接続成功！";
-        setupConn();
-    });
-}
-
-function setupConn() {
-    conn.on('data', data => {
-        if (data.type === 'start') { conf = data.s; startGame(); }
-        if (data.type === 'sync') {
-            if (isHost) { 
-                p2.x = data.p2.x; p2.y = data.p2.y; p2.q = data.p2.q; p2.w = data.p2.w; p2.e = data.p2.e; p2.r = data.p2.r;
-            } else {
-                p1.x = data.p1.x; p1.y = data.p1.y; p1.q = data.p1.q; p1.w = data.p1.w; p1.e = data.p1.e; p1.r = data.p1.r;
-                balls = data.balls; items = data.items; score = data.score; particles = data.particles;
-                timeFrozen = data.timeFrozen; ballGhost = data.ballGhost;
-                if (data.gameOver) showWin(data.winText);
+    <meta name="viewport" id="viewport-meta" content="width=1024">
+    <title>勉強時間記録アプリ</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                        }
+                    }
+                }
             }
         }
-        if (data.type === 'skill') executeSkill(data.key, isHost ? p2 : p1);
-    });
-}
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- SortableJS CDN (並び替え用) -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- Chart.js CDN (グラフ描画用) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Tone.js CDN (効果音用) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- canvas-confetti CDN (紙吹雪用) -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.6); }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 min-h-screen flex flex-col transition-colors duration-200">
 
-function sendStart() {
-    conf = {
-        items: document.getElementById('enableItems').checked,
-        skills: document.getElementById('enableSkills').checked,
-        limit: document.getElementById('enableLimit').checked,
-        win: parseInt(document.getElementById('winScore').value) || 5
-    };
-    conn.send({ type: 'start', s: conf });
-    startGame();
-}
+    <!-- Navigation Header -->
+    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-[#0284c7] fa-graduation-cap text-2xl text-sky-500"></i>
+                <h1 class="text-xl font-bold bg-gradient-to-r from-sky-500 to-indigo-600 bg-clip-text text-transparent">StudyTracker</h1>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button id="nav-study-btn" onclick="switchTab('study')" class="px-3 py-1.5 rounded-lg text-sm font-medium transition bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-300">
+                    <i class="fa-solid fa-clock mr-1"></i>学習
+                </button>
+                <button id="nav-logs-btn" onclick="switchTab('logs')" class="px-3 py-1.5 rounded-lg text-sm font-medium transition text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fa-solid fa-chart-bar mr-1"></i>履歴
+                </button>
+                <button id="nav-settings-btn" onclick="switchTab('settings')" class="px-3 py-1.5 rounded-lg text-sm font-medium transition text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fa-solid fa-gear mr-1"></i>設定
+                </button>
+            </div>
+        </div>
+    </header>
 
-function startGame() {
-    document.getElementById('menu').style.display = "none";
-    w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight;
-    const b = { lx:0, ly:0, vx:0, vy:0, r:P_RAD, tR:P_RAD, frozen:0, rev:0, weak:0, powerUp:0, grav:0 };
-    p1 = { ...b, x:100, y:h/2, color:'#ff0055', q:COOL.Q, w:COOL.W, e:COOL.E };
-    p2 = { ...b, x:w-100, y:h/2, color:'#00ccff', q:COOL.Q, w:COOL.W, e:COOL.E };
-    
-    if (conf.skills) {
-        document.getElementById(isHost ? 'p1-controls' : 'p2-controls').style.display = 'flex';
-    }
-    if (isHost) { createBall(); if (conf.items) setTimeout(spawnItem, 3000); }
-    gameActive = true; update();
-}
+    <!-- Active Timer Banner (Fixed at Bottom/Top if Running) -->
+    <div id="active-timer-bar" class="hidden bg-sky-600 text-white shadow-lg border-b border-sky-500 transition-all">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center space-x-3">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-200 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                </span>
+                <div>
+                    <span class="text-xs opacity-90 block">計測中: <span id="timer-subject-name" class="font-semibold"></span></span>
+                    <span id="timer-display" class="text-2xl font-mono font-bold tracking-wider">00:00:00</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="stopTimer()" class="px-4 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg font-medium text-sm transition shadow-sm flex items-center">
+                    <i class="fa-solid fa-stop mr-1.5"></i>終了・記録
+                </button>
+            </div>
+        </div>
+    </div>
 
-// 画面ボタン・キーボード共通のスキル発動処理
-function handleSkillBtn(key) {
-    if (!gameActive || !conf.skills) return;
-    const p = isHost ? p1 : p2;
-    // 自分側のキー/ボタンかチェック
-    const isMine = (isHost && ['KeyQ','KeyW','KeyE'].includes(key)) || (!isHost && ['KeyI','KeyO','KeyP'].includes(key));
-    if (isMine) {
-        const sType = key.slice(-1).replace('I','Q').replace('O','W').replace('P','E');
-        if (p[sType.toLowerCase()] >= COOL[sType]) {
-            executeSkill(key, p); 
-            p[sType.toLowerCase()] = 0;
-            conn.send({ type: 'skill', key: key });
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-6">
+
+        <!-- TAB 1: STUDY SECTION -->
+        <section id="tab-study" class="space-y-6">
+            
+            <!-- Daily Goal Progress -->
+            <div id="daily-goal-container" class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="flex justify-between items-end mb-2">
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300">今日の目標達成度</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">目標: <span id="goal-target-display">--</span></p>
+                    </div>
+                    <div class="text-right">
+                        <span id="goal-current-display" class="text-2xl font-bold text-sky-600 dark:text-sky-400">0</span>
+                        <span class="text-xs font-medium text-gray-500">/ <span id="goal-max-display">0</span> 分</span>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3 mb-1 overflow-hidden relative">
+                    <div id="goal-progress-bar" class="bg-gradient-to-r from-sky-400 to-indigo-500 h-3 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+                </div>
+                <p id="goal-message" class="text-[10px] text-right text-gray-500 dark:text-gray-400 font-medium"></p>
+            </div>
+
+            <!-- Breadcrumbs Navigation -->
+            <div class="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 overflow-x-auto pb-1" id="breadcrumbs">
+                <!-- Dynamic breadcrumbs will be rendered here -->
+            </div>
+
+            <!-- Add Item Toolbar -->
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3">
+                <input type="text" id="new-item-title" onkeydown="handleInputKey(event)" placeholder="科目や項目名を入力してEnter（例：数学...）" class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <div class="flex space-x-2">
+                    <button onclick="addNewSubject()" class="flex-1 sm:flex-none px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg font-medium text-sm transition flex items-center justify-center space-x-1">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>ボタン追加</span>
+                    </button>
+                    <button onclick="addNewFolder()" class="flex-1 sm:flex-none px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium text-sm transition flex items-center justify-center space-x-1">
+                        <i class="fa-solid fa-folder-plus"></i>
+                        <span>フォルダ作成</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Items Grid -->
+            <div>
+                <h2 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">現在の階層の項目</h2>
+                <div id="items-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    <!-- Items will be dynamic rendered here -->
+                </div>
+                <div id="empty-state" class="hidden text-center py-12 bg-white dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
+                    <i class="fa-regular fa-folder-open text-4xl text-gray-400 dark:text-gray-600 mb-2"></i>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm">項目やフォルダがありません。<br>上の入力欄から作成してください。</p>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- TAB 2: LOGS SECTION -->
+        <section id="tab-logs" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div>
+                    <h2 class="text-lg font-bold">学習履歴</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">過去4週間分（直近28日間）の学習データを閲覧できます。</p>
+                </div>
+                <!-- Date Selector / Navigation -->
+                <div class="flex items-center space-x-2 w-full sm:w-auto justify-between">
+                    <button onclick="changeLogDate(-1)" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <input type="date" id="log-date-picker" onchange="onDateSelected(this.value)" class="bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm">
+                    <button onclick="changeLogDate(1)" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <button onclick="jumpToToday()" class="px-3 py-1.5 bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-300 text-xs font-semibold rounded-lg hover:bg-sky-200">今日</button>
+                </div>
+            </div>
+
+            <!-- Daily Summary Stats -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">選択日の合計時間</span>
+                    <div id="log-total-time" class="text-2xl font-bold text-sky-600 dark:text-sky-400 mt-1">0分</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">セッション数</span>
+                    <div id="log-session-count" class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">0回</div>
+                </div>
+            </div>
+
+            <!-- Weekly Calendar Overview (4 Weeks) -->
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
+                    <div class="flex items-center space-x-2">
+                        <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300">学習マップ</h3>
+                        <select id="graph-period-select" onchange="renderWeeklyHeatmap()" class="hidden bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-0.5 text-xs focus:outline-none">
+                            <option value="7">1週間</option>
+                            <option value="14">2週間</option>
+                            <option value="28" selected>4週間</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center space-x-3 w-full sm:w-auto justify-end">
+                        <span class="text-xs text-gray-400 hidden sm:inline" id="week-start-label">週始まり: 月曜日</span>
+                        <div class="flex bg-gray-100 dark:bg-gray-900 rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
+                            <button id="btn-view-calendar" onclick="setLogViewMode('calendar')" class="px-2.5 py-1 rounded-md text-xs font-medium bg-white dark:bg-gray-700 text-sky-600 dark:text-sky-400 shadow-sm transition"><i class="fa-solid fa-calendar-days sm:mr-1"></i><span class="hidden sm:inline">カレンダー</span></button>
+                            <button id="btn-view-graph" onclick="setLogViewMode('graph')" class="px-2.5 py-1 rounded-md text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition"><i class="fa-solid fa-chart-column sm:mr-1"></i><span class="hidden sm:inline">グラフ</span></button>
+                        </div>
+                    </div>
+                </div>
+                <div id="weekly-heatmap" class="grid grid-cols-7 gap-1.5 text-center text-xs">
+                    <!-- Dynamic Days Header & Calendar Grid -->
+                </div>
+                <div id="weekly-graph-container" class="hidden relative h-48 w-full mt-2">
+                    <canvas id="weekly-graph"></canvas>
+                </div>
+            </div>
+
+            <!-- Log Entries List -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3" id="log-list-title">学習内訳</h3>
+                <div id="log-list" class="space-y-3">
+                    <!-- Dynamic Log items -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: SETTINGS SECTION -->
+        <section id="tab-settings" class="hidden space-y-6">
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
+                <!-- Theme Setting -->
+                <div class="p-4 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-medium text-sm">テーマ設定</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">画面の表示モードを切り替えます</p>
+                    </div>
+                    <select id="setting-theme" onchange="updateThemeSetting(this.value)" class="bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm">
+                        <option value="dark">ダークモード</option>
+                        <option value="light">ライトモード</option>
+                    </select>
+                </div>
+
+                <!-- Week Start Day Setting -->
+                <div class="p-4 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-medium text-sm">週の始まりの曜日</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">カレンダー表示の基準曜日を設定します</p>
+                    </div>
+                    <select id="setting-week-start" onchange="updateWeekStartSetting(this.value)" class="bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm">
+                        <option value="1">月曜日 (デフォルト)</option>
+                        <option value="0">日曜日</option>
+                    </select>
+                </div>
+
+                <!-- Mobile View Setting -->
+                <div class="p-4 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-medium text-sm">スマホ対応表示</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">モバイル画面用の最適化レイアウトを有効にする（デフォルト：オフ）</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="setting-mobile-mode" onchange="updateMobileModeSetting(this.checked)" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-sky-600"></div>
+                    </label>
+                </div>
+
+                <!-- Daily Goal Setting -->
+                <div class="p-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+                    <div>
+                        <h3 class="font-medium text-sm">1日の目標時間（分）</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">プログレスバーの最大値</p>
+                    </div>
+                    <input type="number" id="setting-daily-goal" onchange="updateSetting('dailyGoalMinutes', this.value)" class="w-24 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm text-right" min="1" step="10">
+                </div>
+
+                <!-- Sound Setting -->
+                <div class="p-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+                    <div>
+                        <h3 class="font-medium text-sm">効果音・バイブレーション</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">タイマー開始/終了時の音と振動</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="setting-sound" onchange="updateSetting('soundEnabled', this.checked)" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-sky-600"></div>
+                    </label>
+                </div>
+
+                <!-- Pulse Interval Setting -->
+                <div class="p-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+                    <div>
+                        <h3 class="font-medium text-sm">集中パルス（分）</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">計測中、指定時間ごとに小さく通知します (0でオフ)</p>
+                    </div>
+                    <select id="setting-pulse" onchange="updateSetting('pulseInterval', this.value)" class="bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm">
+                        <option value="0">オフ</option>
+                        <option value="1">1分ごと</option>
+                        <option value="15">15分ごと</option>
+                        <option value="25">25分ごと</option>
+                        <option value="30">30分ごと</option>
+                        <option value="60">60分ごと</option>
+                    </select>
+                </div>
+
+                <!-- Auto-Save Status / Data Management -->
+                <div class="p-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
+                <div class="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">記録する時間</div>
+                <div class="flex items-center justify-center space-x-2">
+                    <input type="number" id="timer-edit-minutes" class="w-24 text-center text-4xl font-bold bg-transparent border-b-2 border-transparent focus:border-sky-500 outline-none text-sky-600 dark:text-sky-400 transition-colors" disabled>
+                    <span class="text-gray-500 font-medium pt-3">分</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+                <button onclick="confirmCancelTimer()" class="py-3 bg-gray-100 hover:bg-rose-100 text-gray-600 hover:text-rose-600 dark:bg-gray-700 dark:hover:bg-rose-900/40 dark:text-gray-300 dark:hover:text-rose-400 rounded-xl text-xs font-bold transition duration-200 flex flex-col items-center justify-center">
+                    <i class="fa-solid fa-trash-can mb-1.5 text-base"></i>キャンセル
+                </button>
+                <button id="btn-edit-timer" onclick="toggleEditTimer()" class="py-3 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-400 rounded-xl text-xs font-bold transition duration-200 flex flex-col items-center justify-center border border-amber-200 dark:border-amber-800/50">
+                    <i class="fa-solid fa-pen mb-1.5 text-base"></i>編集
+                </button>
+                <button onclick="saveTimerRecord()" class="py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold transition duration-200 flex flex-col items-center justify-center shadow-lg shadow-sky-500/30">
+                    <i class="fa-solid fa-check mb-1.5 text-base"></i>記録
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           STATE MANAGEMENT & INITIALIZATION
+           ========================================================================== */
+        const STORAGE_KEY = 'study_tracker_data_v1';
+
+        let appData = {
+            settings: {
+                theme: 'dark',
+                weekStart: 1, 
+                logViewMode: 'calendar',
+                mobileMode: false, // スマホ対応レイアウト (デフォルトオフ)
+                dailyGoalMinutes: 180, // 今日の目標時間 (デフォルト3時間)
+                soundEnabled: true, // 効果音・バイブ
+                pulseInterval: 25 // 集中パルス(分) 0でオフ
+            },
+            currentFolderId: 'root',
+            folders: [],
+            subjects: [],
+            logs: [], 
+            activeTimer: null 
+        };
+
+        let activeTab = 'study';
+        let selectedLogDate = getFormattedDate(new Date());
+        let timerInterval = null;
+        let chartInstance = null; 
+        let sortableInstance = null;
+
+        let lastPulseSec = 0; // 集中パルス用
+        let toneStarted = false; // Tone.jsの初期化フラグ
+
+        async function initTone() {
+            if (!toneStarted && appData.settings.soundEnabled) {
+                await Tone.start();
+                toneStarted = true;
+            }
         }
-    }
-}
 
-window.addEventListener('keydown', e => handleSkillBtn(e.code));
+        function playSound(type) {
+            if (!appData.settings.soundEnabled) return;
+            initTone();
+            
+            const synth = new Tone.Synth().toDestination();
+            const now = Tone.now();
 
-function executeSkill(key, p) {
-    if (['KeyQ','KeyI'].includes(key)) {
-        balls.forEach(b => { if(Math.hypot(b.x-p.x, b.y-p.y)<220){ b.vx=(p===p1?22:-22); createParticles(b.x, b.y, p.color); } });
-    } else if (['KeyW','KeyO'].includes(key)) {
-        timeFrozen = 100;
-    } else if (['KeyE','KeyP'].includes(key)) {
-        p.tR = 130; setTimeout(()=>p.tR=P_RAD, 4000);
-    }
-}
+            try {
+                if (type === 'start') {
+                    synth.triggerAttackRelease("C5", "8n");
+                    if (navigator.vibrate) navigator.vibrate(100);
+                } else if (type === 'stop') {
+                    synth.triggerAttackRelease("E5", "8n", now);
+                    synth.triggerAttackRelease("C5", "4n", now + 0.2);
+                    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                } else if (type === 'pulse') {
+                    synth.triggerAttackRelease("G4", "16n");
+                    if (navigator.vibrate) navigator.vibrate(50);
+                } else if (type === 'fanfare') {
+                    const poly = new Tone.PolySynth(Tone.Synth).toDestination();
+                    poly.triggerAttackRelease(["C4", "E4", "G4"], "8n", now);
+                    poly.triggerAttackRelease(["C4", "E4", "G4"], "8n", now + 0.2);
+                    poly.triggerAttackRelease(["C4", "E4", "G4"], "8n", now + 0.4);
+                    poly.triggerAttackRelease(["C4", "E4", "G4", "C5"], "2n", now + 0.6);
+                    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+                }
+            } catch (e) {
+                console.log("Sound error:", e);
+            }
+        }
 
-function createBall() { 
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 4;
-    balls.push({ x:w/2, y:h/2, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, r:12, lastP:null }); 
-}
+        function triggerConfetti() {
+            var duration = 3 * 1000;
+            var end = Date.now() + duration;
 
-function createParticles(x, y, color) { for(let i=0; i<8; i++) particles.push({ x, y, vx:(Math.random()-0.5)*5, vy:(Math.random()-0.5)*5, life:20, color }); }
+            (function frame() {
+                confetti({
+                    particleCount: 5,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: ['#38bdf8', '#818cf8', '#fbbf24']
+                });
+                confetti({
+                    particleCount: 5,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: ['#38bdf8', '#818cf8', '#fbbf24']
+                });
 
-function spawnItem() {
-    if (!gameActive || !conf.items || !isHost) return;
-    const t = ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
-    items.push({ x: w/4 + Math.random()*w/2, y: Math.random()*(h-100)+50, n:t.n, c:t.c, typeIdx: ITEM_TYPES.indexOf(t) });
-    setTimeout(spawnItem, 5000);
-}
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
 
-function showWin(txt) {
-    gameActive = false;
-    document.getElementById('win-screen').style.display='flex';
-    document.getElementById('win-text').innerText = txt;
-}
+        window.onload = function() {
+            loadData();
+            applySettings();
+            renderBreadcrumbs();
+            renderItems();
+            renderProgress();
+            checkActiveTimer();
+            cleanupOldLogs(); 
+            document.getElementById('log-date-picker').value = selectedLogDate;
+        };
 
-canvas.addEventListener('pointermove', e => {
-    if (!gameActive) return;
-    const p = isHost ? p1 : p2;
-    if (p.frozen > 0) return;
-    let tx = e.clientX, ty = p.rev > 0 ? h - e.clientY : e.clientY;
-    p.x = tx; p.y = ty;
-    if (conf.limit) {
-        if (isHost && p.x > w/2 - p.r) p.x = w/2 - p.r;
-        if (!isHost && p.x < w/2 + p.r) p.x = w/2 + p.r;
-    }
-});
+        function renderProgress() {
+            const todayStr = getFormattedDate(new Date());
+            const todayLogs = appData.logs.filter(l => l.dateStr === todayStr);
+            const totalSec = todayLogs.reduce((acc, curr) => acc + curr.durationSec, 0);
+            const totalMins = Math.round(totalSec / 60);
+            
+            const goalMins = appData.settings.dailyGoalMinutes || 180;
+            const progress = Math.min(100, (totalMins / goalMins) * 100);
+            
+            document.getElementById('goal-current-display').innerText = totalMins;
+            document.getElementById('goal-max-display').innerText = goalMins;
+            
+            const h = Math.floor(goalMins / 60);
+            const m = goalMins % 60;
+            document.getElementById('goal-target-display').innerText = m > 0 ? `${h}時間${m}分` : `${h}時間`;
+            
+            document.getElementById('goal-progress-bar').style.width = `${progress}%`;
+            
+            const msgEl = document.getElementById('goal-message');
+            if (totalMins >= goalMins) {
+                msgEl.innerText = "🎉 今日の目標を達成しました！素晴らしい！";
+                msgEl.className = "text-[10px] text-right text-amber-500 font-bold mt-1";
+            } else {
+                const remain = goalMins - totalMins;
+                msgEl.innerText = `目標達成まであと ${remain} 分`;
+                msgEl.className = "text-[10px] text-right text-gray-500 dark:text-gray-400 font-medium mt-1";
+            }
+        }
 
-function update() {
-    if (!gameActive) return;
-    if (timeFrozen > 0) { timeFrozen--; } else {
-        if (isHost) {
-            if (ballGhost > 0) ballGhost--;
-            balls.forEach((b, bi) => {
-                b.x += b.vx; b.y += b.vy; b.vx *= 0.998; b.vy *= 0.998;
-                if (b.y < b.r || b.y > h - b.r) { b.vy *= -1; b.y = b.y<b.r?b.r:h-b.r; createParticles(b.x, b.y, '#fff'); }
-                [p1, p2].forEach(p => {
-                    const dist = Math.hypot(b.x-p.x, b.y-p.y);
-                    if (p.grav > 0 && dist < 250) { b.vx += (p.x - b.x) * 0.01; b.vy += (p.y - b.y) * 0.01; }
-                    if (dist < b.r + p.r) {
-                        const ang = Math.atan2(b.y-p.y, b.x-p.x);
-                        let pow = 0.7;
-                        if(p.weak > 0) pow = 0.05;
-                        else if(p.powerUp > 0) pow = 1.1;
-                        b.vx = Math.cos(ang)*12 + (p.x-p.lx)*pow; b.vy = Math.sin(ang)*12 + (p.y-p.ly)*pow;
-                        b.lastP = p; createParticles(b.x, b.y, p.color);
+        /* ==========================================================================
+           ITEMS & FOLDERS LOGIC (プロ仕様UI & Drag/Drop)
+           ========================================================================== */
+        function handleInputKey(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addNewSubject();
+            }
+        }
+
+        function addNewSubject() {
+            const input = document.getElementById('new-item-title');
+            const title = input.value.trim();
+            if (!title) return;
+            const newItem = { id: 'sub_' + Date.now(), parentId: appData.currentFolderId, name: title, order: Date.now() };
+            appData.subjects.push(newItem);
+            input.value = '';
+            saveData();
+            renderItems();
+        }
+
+        function addNewFolder() {
+            const input = document.getElementById('new-item-title');
+            const title = input.value.trim();
+            if (!title) return;
+            const newFolder = { id: 'fol_' + Date.now(), parentId: appData.currentFolderId, name: title, order: Date.now() };
+            appData.folders.push(newFolder);
+            input.value = '';
+            saveData();
+            renderItems();
+        }
+
+        function openFolder(folderId) {
+            appData.currentFolderId = folderId;
+            saveData();
+            renderBreadcrumbs();
+            renderItems();
+        }
+
+        function renderBreadcrumbs() {
+            const bc = document.getElementById('breadcrumbs');
+            let html = `<button onclick="openFolder('root')" class="hover:text-sky-500 transition font-medium flex items-center"><i class="fa-solid fa-house mr-1"></i> ホーム</button>`;
+            
+            if (appData.currentFolderId !== 'root') {
+                const path = [];
+                let curr = appData.currentFolderId;
+                while (curr !== 'root') {
+                    const f = appData.folders.find(x => x.id === curr);
+                    if (f) {
+                        path.unshift(f);
+                        curr = f.parentId;
+                    } else break;
+                }
+                path.forEach(f => {
+                    html += `<span class="mx-2 text-gray-400">/</span><button onclick="openFolder('${f.id}')" class="hover:text-sky-500 transition font-medium truncate max-w-[100px]">${escapeHtml(f.name)}</button>`;
+                });
+            }
+            bc.innerHTML = html;
+        }
+
+        function renderItems() {
+            const grid = document.getElementById('items-grid');
+            const emptyState = document.getElementById('empty-state');
+            
+            const currentFolders = appData.folders.filter(f => f.parentId === appData.currentFolderId).sort((a,b)=>a.order-b.order);
+            const currentSubjects = appData.subjects.filter(s => s.parentId === appData.currentFolderId).sort((a,b)=>a.order-b.order);
+            
+            if (currentFolders.length === 0 && currentSubjects.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                if(sortableInstance) { sortableInstance.destroy(); sortableInstance = null; }
+                return;
+            }
+            emptyState.classList.add('hidden');
+            
+            // 今日の日付文字列
+            const todayStr = getFormattedDate(new Date());
+            
+            let html = '';
+            currentFolders.forEach(f => {
+                html += `
+                <div data-id="${f.id}" data-type="folder" class="group relative bg-gradient-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-amber-300 dark:hover:border-amber-600 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center min-h-[120px] sm:min-h-[140px]" onclick="openFolder('${f.id}')">
+                    <button class="absolute top-2 right-2 w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center" onclick="event.stopPropagation(); deleteItem('${f.id}', 'folder')"><i class="fa-solid fa-xmark text-sm"></i></button>
+                    <div class="w-14 h-14 sm:w-16 sm:h-16 mb-2 sm:mb-3 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-folder-open text-2xl sm:text-3xl text-amber-500 drop-shadow-sm"></i>
+                    </div>
+                    <span class="font-bold text-sm sm:text-base text-gray-700 dark:text-gray-200 text-center w-full truncate px-1">${escapeHtml(f.name)}</span>
+                </div>`;
+            });
+
+            currentSubjects.forEach(s => {
+                const isActive = appData.activeTimer && appData.activeTimer.subjectId === s.id;
+                const activeClass = isActive ? 'ring-2 ring-sky-500 bg-sky-50 dark:bg-sky-900/30' : 'bg-gradient-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 hover:border-sky-300 dark:hover:border-sky-600';
+                const iconClass = isActive ? 'text-sky-500 animate-pulse' : 'text-sky-400 dark:text-sky-500';
+                const bgIconClass = isActive ? 'bg-sky-100 dark:bg-sky-900/50' : 'bg-sky-50 dark:bg-sky-900/20';
+                
+                // 今日の学習時間を計算
+                const subjectLogs = appData.logs.filter(l => l.subjectId === s.id && l.dateStr === todayStr);
+                const todayMins = Math.round(subjectLogs.reduce((acc, curr) => acc + curr.durationSec, 0) / 60);
+                
+                const badgeHtml = todayMins > 0 
+                    ? `<div class="absolute top-2 left-2 bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1"><i class="fa-solid fa-fire text-orange-500"></i>今日 ${todayMins}分</div>` 
+                    : '';
+
+                html += `
+                <div data-id="${s.id}" data-type="subject" class="group relative border border-gray-200 dark:border-gray-700 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col items-center justify-center min-h-[120px] sm:min-h-[140px] ${activeClass}" onclick="startTimer('${s.id}', '${escapeHtml(s.name)}')">
+                    ${badgeHtml}
+                    <button class="absolute top-2 right-2 w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center" onclick="event.stopPropagation(); deleteItem('${s.id}', 'subject')"><i class="fa-solid fa-xmark text-sm"></i></button>
+                    <div class="w-14 h-14 sm:w-16 sm:h-16 mb-2 sm:mb-3 rounded-full ${bgIconClass} flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-book-open text-2xl sm:text-3xl ${iconClass} drop-shadow-sm"></i>
+                    </div>
+                    <span class="font-bold text-sm sm:text-base text-gray-700 dark:text-gray-200 text-center w-full truncate px-1">${escapeHtml(s.name)}</span>
+                </div>`;
+            });
+            grid.innerHTML = html;
+
+            // SortableJS による長押し入れ替え機能
+            if(sortableInstance) sortableInstance.destroy();
+            sortableInstance = new Sortable(grid, {
+                animation: 200,
+                delay: 200, // 長押し判定
+                delayOnTouchOnly: true,
+                ghostClass: "opacity-50",
+                onEnd: function (evt) {
+                    const itemEls = Array.from(grid.children);
+                    itemEls.forEach((el, index) => {
+                        const id = el.getAttribute('data-id');
+                        const type = el.getAttribute('data-type');
+                        if(type === 'folder') {
+                            const f = appData.folders.find(x => x.id === id);
+                            if(f) f.order = index;
+                        } else {
+                            const s = appData.subjects.find(x => x.id === id);
+                            if(s) s.order = index;
+                        }
+                    });
+                    saveData();
+                }
+            });
+        }
+
+        function deleteItem(id, type) {
+            showModal("削除の確認", "本当に削除しますか？", [
+                { text: "キャンセル", primary: false, onClick: closeModal },
+                { text: "削除する", primary: true, onClick: () => {
+                    if (type === 'folder') {
+                        appData.folders = appData.folders.filter(f => f.id !== id);
+                    } else {
+                        appData.subjects = appData.subjects.filter(s => s.id !== id);
                     }
-                });
-                items = items.filter(it => {
-                    if (Math.hypot(b.x-it.x, b.y-it.y) < b.r+35) {
-                        if(b.lastP) ITEM_TYPES[it.typeIdx].f(b.lastP, b.lastP===p1?p2:p1, b);
-                        itemNotice.innerText = it.n; itemNotice.style.display = 'block';
-                        setTimeout(()=>itemNotice.style.display='none', 800);
-                        createParticles(it.x, it.y, it.c);
-                        return false;
-                    } return true;
-                });
-                if (b.x < 0) { score[1]++; balls.splice(bi, 1); if(balls.length==0) createBall(); }
-                if (b.x > w) { score[0]++; balls.splice(bi, 1); if(balls.length==0) createBall(); }
-            });
-            let gameOver = false, winText = "";
-            if (score[0] >= conf.win) { gameOver = true; winText = "1P WIN!"; }
-            if (score[1] >= conf.win) { gameOver = true; winText = "2P WIN!"; }
-            if (gameOver) showWin(winText);
-
-            [p1, p2].forEach(p => {
-                p.vx = p.x-p.lx; p.vy = p.y-p.ly; p.lx = p.x; p.ly = p.y;
-                p.r += (p.tR - p.r) * 0.1;
-                if(p.q < COOL.Q) p.q++; if(p.w < COOL.W) p.w++; if(p.e < COOL.E) p.e++;
-                if(p.frozen > 0) p.frozen--; if(p.rev > 0) p.rev--; if(p.weak > 0) p.weak--;
-                if(p.powerUp > 0) p.powerUp--; if(p.grav > 0) p.grav--;
-            });
-            conn.send({ type: 'sync', p1, balls, items, score, particles, timeFrozen, ballGhost, gameOver, winText });
-        } else {
-            p2.vx = p2.x-p2.lx; p2.vy = p2.y-p2.ly; p2.lx = p2.x; p2.ly = p2.y;
-            p2.r += (p2.tR - p2.r) * 0.1;
-            if(p2.q < COOL.Q) p2.q++; if(p2.w < COOL.W) p2.w++; if(p2.e < COOL.E) p2.e++;
-            if(p2.frozen > 0) p2.frozen--; if(p2.rev > 0) p2.rev--; if(p2.weak > 0) p2.weak--;
-            if(p2.powerUp > 0) p2.powerUp--; if(p2.grav > 0) p2.grav--;
-            conn.send({ type: 'sync', p2 });
+                    saveData();
+                    renderItems();
+                    closeModal();
+                }}
+            ]);
         }
-    }
-    particles.forEach((p, i) => { p.x+=p.vx; p.y+=p.vy; p.life--; if(p.life<=0) particles.splice(i,1); });
-    draw();
-    requestAnimationFrame(update);
-}
 
-function draw() {
-    ctx.fillStyle = '#000'; ctx.fillRect(0,0,w,h);
-    if (conf.limit) { ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.moveTo(w/2,0); ctx.lineTo(w/2,h); ctx.stroke(); }
-    particles.forEach(p => { ctx.globalAlpha = p.life/20; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 4, 4); });
-    ctx.globalAlpha = 1;
-    items.forEach(it => { 
-        ctx.fillStyle = it.c; ctx.font = 'bold 22px sans-serif'; ctx.textAlign='center'; 
-        ctx.shadowBlur = 10; ctx.shadowColor = it.c;
-        ctx.fillText(it.n, it.x, it.y); 
-        ctx.shadowBlur = 0;
-    });
-    [p1, p2].forEach(p => {
-        ctx.shadowBlur = 20; ctx.shadowColor = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-        if(p.weak > 0) ctx.fillStyle = '#333';
-        else if(p.powerUp > 0) { ctx.fillStyle = '#fff'; ctx.shadowBlur = 40; }
-        else ctx.fillStyle = p.color;
-        ctx.fill(); ctx.shadowBlur = 0;
-    });
-    balls.forEach(b => { 
-        ctx.globalAlpha = ballGhost > 0 ? 0.2 : 1.0;
-        ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.shadowBlur = 10; ctx.shadowColor = '#fff';
-    });
-    ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
-    document.getElementById('s1').innerText = score[0]; document.getElementById('s2').innerText = score[1];
-    
-    // スキルゲージ更新
-    document.getElementById('p1-q-btn').value = (p1.q/COOL.Q)*100;
-    document.getElementById('p1-w-btn').value = (p1.w/COOL.W)*100;
-    document.getElementById('p1-e-btn').value = (p1.e/COOL.E)*100;
-    document.getElementById('p2-q-btn').value = (p2.q/COOL.Q)*100;
-    document.getElementById('p2-w-btn').value = (p2.w/COOL.W)*100;
-    document.getElementById('p2-e-btn').value = (p2.e/COOL.E)*100;
-}
-initPeer();
-</script>
+        /* ==========================================================================
+           TIMER LOGIC
+           ========================================================================== */
+        let pendingTimerRecord = null;
+
+        function startTimer(subjectId, subjectName) {
+            if (appData.activeTimer && appData.activeTimer.subjectId !== subjectId) {
+                showModal("確認", "他の計測が実行中です。一度終了してください。", [
+                    { text: "OK", primary: true, onClick: closeModal }
+                ]);
+                return;
+            } else if (appData.activeTimer && appData.activeTimer.subjectId === subjectId) {
+                // すでに計測中の同じボタンを押した場合は停止
+                stopTimer();
+                return;
+            }
+
+            // タイマー開始処理
+            playSound('start');
+
+            appData.activeTimer = {
+                subjectId: subjectId,
+                subjectName: subjectName,
+                startTime: Date.now()
+            };
+            lastPulseSec = 0;
+
+            saveData();
+            checkActiveTimer();
+            renderItems();
+        }
+
+        function checkActiveTimer() {
+            if (appData.activeTimer) {
+                document.getElementById('active-timer-bar').classList.remove('hidden');
+                document.getElementById('timer-subject-name').innerText = appData.activeTimer.subjectName;
+                
+                if (timerInterval) clearInterval(timerInterval);
+                updateTimerDisplay();
+                timerInterval = setInterval(updateTimerDisplay, 1000);
+            } else {
+                document.getElementById('active-timer-bar').classList.add('hidden');
+                if (timerInterval) clearInterval(timerInterval);
+            }
+        }
+
+        function updateTimerDisplay() {
+            if (!appData.activeTimer) return;
+            const elapsedSec = Math.floor((Date.now() - appData.activeTimer.startTime) / 1000);
+            const hours = String(Math.floor(elapsedSec / 3600)).padStart(2, '0');
+            const minutes = String(Math.floor((elapsedSec % 3600) / 60)).padStart(2, '0');
+            const seconds = String(elapsedSec % 60).padStart(2, '0');
+            document.getElementById('timer-display').innerText = `${hours}:${minutes}:${seconds}`;
+
+            // 集中パルス判定
+            const pInt = parseInt(appData.settings.pulseInterval) || 0;
+            if (pInt > 0) {
+                const pSec = pInt * 60;
+                if (elapsedSec > 0 && elapsedSec % pSec === 0 && elapsedSec !== lastPulseSec) {
+                    playSound('pulse');
+                    lastPulseSec = elapsedSec;
+                }
+            }
+        }
+
+        function stopTimer() {
+            if (!appData.activeTimer) return;
+            const now = Date.now();
+            const startTime = appData.activeTimer.startTime;
+            const durationSec = Math.floor((now - startTime) / 1000);
+
+            if (durationSec < 5) {
+                showModal("タイマー終了", "計測時間が短すぎたため、記録されませんでした。", [
+                    { text: "OK", primary: true, onClick: () => {
+                        appData.activeTimer = null;
+                        saveData();
+                        checkActiveTimer();
+                        renderItems();
+                        closeModal();
+                    }}
+                ]);
+                return;
+            }
+            
+            playSound('stop');
+
+            const mins = Math.max(1, Math.round(durationSec / 60));
+            pendingTimerRecord = {
+                subjectId: appData.activeTimer.subjectId,
+                subjectName: appData.activeTimer.subjectName,
+                startTime: startTime,
+                endTime: now,
+                durationSec: durationSec,
+                originalMins: mins
+            };
+
+            document.getElementById('timer-result-subject').innerText = `「${pendingTimerRecord.subjectName}」`;
+            const inputEl = document.getElementById('timer-edit-minutes');
+            inputEl.value = mins;
+            inputEl.disabled = true;
+            inputEl.classList.remove('border-sky-500', 'bg-white', 'dark:bg-gray-800');
+            inputEl.classList.add('border-transparent', 'bg-transparent');
+            
+            const btnEl = document.getElementById('btn-edit-timer');
+            btnEl.classList.remove('bg-amber-500', 'text-white', 'dark:bg-amber-600');
+            btnEl.classList.add('bg-amber-50', 'text-amber-700', 'dark:bg-amber-900/30', 'dark:text-amber-400');
+            
+            document.getElementById('timer-result-modal').classList.remove('hidden');
+        }
+
+        function toggleEditTimer() {
+            const inputEl = document.getElementById('timer-edit-minutes');
+            const btnEl = document.getElementById('btn-edit-timer');
+            
+            if (inputEl.disabled) {
+                inputEl.disabled = false;
+                inputEl.focus();
+                inputEl.classList.remove('border-transparent', 'bg-transparent');
+                inputEl.classList.add('border-sky-500', 'bg-white', 'dark:bg-gray-800');
+                btnEl.classList.remove('bg-amber-50', 'text-amber-700', 'dark:bg-amber-900/30', 'dark:text-amber-400');
+                btnEl.classList.add('bg-amber-500', 'text-white', 'dark:bg-amber-600');
+            } else {
+                inputEl.disabled = true;
+                inputEl.classList.add('border-transparent', 'bg-transparent');
+                inputEl.classList.remove('border-sky-500', 'bg-white', 'dark:bg-gray-800');
+                btnEl.classList.remove('bg-amber-500', 'text-white', 'dark:bg-amber-600');
+                btnEl.classList.add('bg-amber-50', 'text-amber-700', 'dark:bg-amber-900/30', 'dark:text-amber-400');
+                let val = parseInt(inputEl.value);
+                if (isNaN(val) || val < 0) val = 0;
+                inputEl.value = val;
+            }
+        }
+
+        function confirmCancelTimer() {
+            showModal("記録の破棄", "本当にこの学習記録を破棄しますか？", [
+                { text: "いいえ", primary: false, onClick: closeModal },
+                { text: "はい、破棄する", primary: true, onClick: () => {
+                    appData.activeTimer = null;
+                    pendingTimerRecord = null;
+                    saveData();
+                    checkActiveTimer();
+                    renderItems();
+                    closeModal();
+                    document.getElementById('timer-result-modal').classList.add('hidden');
+                }}
+            ]);
+        }
+
+        function saveTimerRecord() {
+            if (!pendingTimerRecord) return;
+            const inputEl = document.getElementById('timer-edit-minutes');
+            let finalMins = parseInt(inputEl.value);
+            if (isNaN(finalMins) || finalMins <= 0) {
+                confirmCancelTimer();
+                return;
+            }
+            
+            const todayStr = getFormattedDate(new Date(pendingTimerRecord.endTime));
+            
+            // 記録前の今日のトータル分数
+            const todayLogs = appData.logs.filter(l => l.dateStr === todayStr);
+            const prevTotalMins = Math.round(todayLogs.reduce((acc, curr) => acc + curr.durationSec, 0) / 60);
+
+            const newLog = {
+                id: 'log_' + Date.now(),
+                subjectId: pendingTimerRecord.subjectId,
+                subjectName: pendingTimerRecord.subjectName,
+                startTime: pendingTimerRecord.startTime,
+                endTime: pendingTimerRecord.endTime,
+                durationSec: finalMins !== pendingTimerRecord.originalMins ? finalMins * 60 : pendingTimerRecord.durationSec,
+                dateStr: todayStr
+            };
+            appData.logs.push(newLog);
+
+            appData.activeTimer = null;
+            pendingTimerRecord = null;
+            saveData();
+            checkActiveTimer();
+            renderItems();
+            document.getElementById('timer-result-modal').classList.add('hidden');
+
+            if (activeTab === 'logs') renderLogs();
+            renderProgress(); // プログレスバー更新
+
+            // 目標達成判定
+            const newTotalMins = prevTotalMins + finalMins;
+            const goalMins = appData.settings.dailyGoalMinutes || 180;
+            if (prevTotalMins < goalMins && newTotalMins >= goalMins) {
+                setTimeout(() => {
+                    playSound('fanfare');
+                    triggerConfetti();
+                }, 300); // モーダルが閉じた直後に発動
+            }
+        }
+
+        /* ==========================================================================
+           LOGS & HISTORY
+           ========================================================================== */
+        function setLogViewMode(mode) {
+            if (!appData.settings) appData.settings = {};
+            appData.settings.logViewMode = mode;
+            saveData();
+            
+            const btnCal = document.getElementById('btn-view-calendar');
+            const btnGraph = document.getElementById('btn-view-graph');
+            
+            if (mode === 'calendar') {
+                btnCal.className = "px-2.5 py-1 rounded-md text-xs font-medium bg-white dark:bg-gray-700 text-sky-600 dark:text-sky-400 shadow-sm transition";
+                btnGraph.className = "px-2.5 py-1 rounded-md text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition";
+                document.getElementById('weekly-heatmap').classList.remove('hidden');
+                document.getElementById('weekly-graph-container').classList.add('hidden');
+            } else {
+                btnGraph.className = "px-2.5 py-1 rounded-md text-xs font-medium bg-white dark:bg-gray-700 text-sky-600 dark:text-sky-400 shadow-sm transition";
+                btnCal.className = "px-2.5 py-1 rounded-md text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition";
+                document.getElementById('weekly-heatmap').classList.add('hidden');
+                document.getElementById('weekly-graph-container').classList.remove('hidden');
+            }
+            
+            if (activeTab === 'logs') renderWeeklyHeatmap();
+        }
+
+        function renderLogs() {
+            document.getElementById('log-date-picker').value = selectedLogDate;
+            const filteredLogs = appData.logs.filter(l => l.dateStr === selectedLogDate);
+            
+            const totalSec = filteredLogs.reduce((acc, curr) => acc + curr.durationSec, 0);
+            const totalMins = Math.round(totalSec / 60);
+
+            document.getElementById('log-total-time').innerText = `${totalMins}分`;
+            document.getElementById('log-session-count').innerText = `${filteredLogs.length}回`;
+
+            const logList = document.getElementById('log-list');
+            document.getElementById('log-list-title').innerText = `${selectedLogDate} の学習内訳`;
+
+            if (filteredLogs.length === 0) {
+                logList.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">この日の学習記録はありません</p>`;
+            } else {
+                logList.innerHTML = filteredLogs.map(log => {
+                    const timeRangeStr = `${formatTime(new Date(log.startTime))} ～ ${formatTime(new Date(log.endTime))}`;
+                    const mins = Math.max(1, Math.round(log.durationSec / 60));
+                    return `
+                        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-800">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-2 h-8 bg-sky-500 rounded-full"></div>
+                                <div>
+                                    <div class="font-bold text-sm text-gray-800 dark:text-gray-200">${escapeHtml(log.subjectName)}</div>
+                                    <div class="text-xs text-gray-400">${timeRangeStr}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="font-bold text-sky-600 dark:text-sky-400 text-base">${mins}</span>
+                                <span class="text-xs text-gray-500">分</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            renderWeeklyHeatmap();
+        }
+
+        function renderWeeklyHeatmap() {
+            const heatmapContainer = document.getElementById('weekly-heatmap');
+            const weekStartSetting = parseInt(appData.settings.weekStart); 
+            const viewMode = (appData.settings && appData.settings.logViewMode) ? appData.settings.logViewMode : 'calendar';
+            const graphSelect = document.getElementById('graph-period-select');
+
+            document.getElementById('week-start-label').innerText = `週始まり: ${weekStartSetting === 1 ? '月曜日' : '日曜日'}`;
+
+            const days = [];
+            const today = new Date();
+            
+            if (viewMode === 'calendar') {
+                graphSelect.classList.add('hidden');
+                
+                let current = new Date(today);
+                let dayOfWeek = current.getDay(); 
+                let diffToWeekStart = (dayOfWeek - weekStartSetting + 7) % 7;
+                current.setDate(current.getDate() - diffToWeekStart); 
+                current.setDate(current.getDate() - 21); 
+
+                for (let i = 0; i < 28; i++) {
+                    const dateStr = getFormattedDate(current);
+                    const dayLogs = appData.logs.filter(l => l.dateStr === dateStr);
+                    const dayMins = Math.round(dayLogs.reduce((acc, curr) => acc + curr.durationSec, 0) / 60);
+
+                    days.push({
+                        dateStr: dateStr,
+                        dayNum: current.getDate(),
+                        month: current.getMonth() + 1,
+                        mins: dayMins,
+                        isToday: dateStr === getFormattedDate(today)
+                    });
+                    current.setDate(current.getDate() + 1);
+                }
+
+                const dayNames = weekStartSetting === 1 
+                    ? ['月', '火', '水', '木', '金', '土', '日']
+                    : ['日', '月', '火', '水', '木', '金', '土'];
+
+                let html = dayNames.map(name => `<div class="font-bold text-gray-400 py-1 text-center">${name}</div>`).join('');
+
+                days.forEach(day => {
+                    let bgClass = 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400';
+                    if (day.mins > 0 && day.mins <= 30) bgClass = 'bg-sky-200 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200';
+                    else if (day.mins > 30 && day.mins <= 120) bgClass = 'bg-sky-400 dark:bg-sky-700 text-white';
+                    else if (day.mins > 120) bgClass = 'bg-sky-600 dark:bg-sky-500 text-white font-bold';
+
+                    const isSelected = day.dateStr === selectedLogDate;
+                    const borderClass = isSelected ? 'ring-2 ring-amber-400 ring-offset-2 dark:ring-offset-gray-800' : 'border border-transparent';
+
+                    let timeStr = '';
+                    if (day.mins > 0) {
+                        if (day.mins >= 60) {
+                            const h = Math.floor(day.mins / 60);
+                            const m = day.mins % 60;
+                            timeStr = m > 0 ? `${h}時間${m}分` : `${h}時間`;
+                        } else {
+                            timeStr = `${day.mins}分`;
+                        }
+                    }
+
+                    html += `
+                        <button onclick="onDateSelected('${day.dateStr}')" class="p-1 sm:p-2 rounded-xl ${bgClass} ${borderClass} flex flex-col items-center justify-center transition-transform hover:scale-105 relative group min-h-[48px] sm:min-h-[56px] w-full">
+                            <span class="${day.mins > 0 ? 'text-xs' : 'text-sm'} font-semibold">${day.dayNum}</span>
+                            ${day.mins > 0 ? `<span class="text-[9px] sm:text-[10px] opacity-90 mt-0.5 leading-tight font-medium tracking-tighter w-full text-center whitespace-nowrap overflow-hidden text-ellipsis">${timeStr}</span>` : ''}
+                            ${day.isToday ? `<span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 border-2 border-white dark:border-gray-800 rounded-full"></span>` : ''}
+                        </button>
+                    `;
+                });
+                heatmapContainer.innerHTML = html;
+            } else {
+                graphSelect.classList.remove('hidden');
+                
+                // グラフ表示用のデータ生成（選択した期間分）
+                const pDays = parseInt(graphSelect.value) || 28;
+                let current = new Date(today);
+                current.setDate(current.getDate() - pDays + 1);
+                
+                for (let i = 0; i < pDays; i++) {
+                    const dateStr = getFormattedDate(current);
+                    const dayLogs = appData.logs.filter(l => l.dateStr === dateStr);
+                    const dayMins = Math.round(dayLogs.reduce((acc, curr) => acc + curr.durationSec, 0) / 60);
+
+                    days.push({
+                        dateStr: dateStr,
+                        dayNum: current.getDate(),
+                        month: current.getMonth() + 1,
+                        mins: dayMins,
+                        isToday: dateStr === getFormattedDate(today)
+                    });
+                    current.setDate(current.getDate() + 1);
+                }
+                renderChart(days);
+            }
+        }
+        
+        function renderChart(days) {
+            const ctx = document.getElementById('weekly-graph').getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            const textColor = isDark ? '#9ca3af' : '#6b7280'; 
+            const gridColor = isDark ? '#374151' : '#e5e7eb'; 
+
+            const labels = days.map(d => `${d.month}/${d.dayNum}`);
+            const data = days.map(d => d.mins);
+            const bgColors = days.map(d => d.dateStr === selectedLogDate ? '#fbbf24' : (isDark ? '#0284c7' : '#38bdf8')); 
+
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '学習時間',
+                        data: data,
+                        backgroundColor: bgColors,
+                        borderRadius: 4,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            onDateSelected(days[index].dateStr);
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let val = context.raw;
+                                    if (val >= 60) {
+                                        const h = Math.floor(val / 60);
+                                        const m = val % 60;
+                                        return m > 0 ? `${h}時間${m}分` : `${h}時間`;
+                                    }
+                                    return `${val}分`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 45 },
+                            grid: { display: false }
+                        },
+                        y: {
+                            ticks: { color: textColor, font: { size: 10 } },
+                            grid: { color: gridColor },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function changeLogDate(offsetDays) {
+            const date = new Date(selectedLogDate);
+            date.setDate(date.getDate() + offsetDays);
+            selectedLogDate = getFormattedDate(date);
+            renderLogs();
+        }
+
+        function onDateSelected(dateStr) {
+            selectedLogDate = dateStr;
+            renderLogs();
+        }
+
+        function jumpToToday() {
+            selectedLogDate = getFormattedDate(new Date());
+            renderLogs();
+        }
+
+        function cleanupOldLogs() {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - 35);
+            const cutoffStr = getFormattedDate(cutoffDate);
+            appData.logs = appData.logs.filter(log => log.dateStr >= cutoffStr);
+            saveData();
+        }
+
+        /* ==========================================================================
+           SETTINGS & NAVIGATION
+           ========================================================================== */
+        function switchTab(tabName) {
+            activeTab = tabName;
+            
+            document.getElementById('tab-study').classList.toggle('hidden', tabName !== 'study');
+            document.getElementById('tab-logs').classList.toggle('hidden', tabName !== 'logs');
+            document.getElementById('tab-settings').classList.toggle('hidden', tabName !== 'settings');
+
+            ['study', 'logs', 'settings'].forEach(t => {
+                const btn = document.getElementById(`nav-${t}-btn`);
+                if (t === tabName) {
+                    btn.className = "px-3 py-1.5 rounded-lg text-sm font-medium transition bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-300";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-lg text-sm font-medium transition text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700";
+                }
+            });
+
+            if (tabName === 'logs') renderLogs();
+        }
+
+        function applySettings() {
+            // 初期値がない場合の補完
+            if (appData.settings.dailyGoalMinutes === undefined) appData.settings.dailyGoalMinutes = 180;
+            if (appData.settings.soundEnabled === undefined) appData.settings.soundEnabled = true;
+            if (appData.settings.pulseInterval === undefined) appData.settings.pulseInterval = 25;
+
+            const isDark = appData.settings.theme === 'dark';
+            document.documentElement.classList.toggle('dark', isDark);
+            document.getElementById('setting-theme').value = appData.settings.theme;
+            document.getElementById('setting-week-start').value = appData.settings.weekStart;
+            
+            document.getElementById('setting-daily-goal').value = appData.settings.dailyGoalMinutes;
+            document.getElementById('setting-sound').checked = appData.settings.soundEnabled;
+            document.getElementById('setting-pulse').value = appData.settings.pulseInterval;
+            
+            // Viewport/Mobile Setting
+            const mobileMode = appData.settings.mobileMode || false;
+            const chkMobile = document.getElementById('setting-mobile-mode');
+            if(chkMobile) chkMobile.checked = mobileMode;
+            applyViewportSetting(mobileMode);
+            
+            const viewMode = (appData.settings && appData.settings.logViewMode) ? appData.settings.logViewMode : 'calendar';
+            setLogViewMode(viewMode);
+        }
+
+        function updateThemeSetting(themeVal) {
+            appData.settings.theme = themeVal;
+            saveData();
+            applySettings();
+            if (activeTab === 'logs') renderLogs();
+        }
+
+        function updateWeekStartSetting(weekStartVal) {
+            appData.settings.weekStart = parseInt(weekStartVal);
+            saveData();
+            if (activeTab === 'logs') renderLogs();
+        }
+
+        function updateMobileModeSetting(isMobile) {
+            if(!appData.settings) appData.settings = {};
+            appData.settings.mobileMode = isMobile;
+            saveData();
+            applyViewportSetting(isMobile);
+        }
+        
+        function updateSetting(key, value) {
+            if(!appData.settings) appData.settings = {};
+            if (key === 'soundEnabled') {
+                appData.settings[key] = value;
+                if(value) initTone(); // 音をオンにしたら初期化試行
+            } else if (key === 'dailyGoalMinutes' || key === 'pulseInterval') {
+                appData.settings[key] = parseInt(value) || 0;
+            }
+            saveData();
+            if (key === 'dailyGoalMinutes') renderProgress();
+        }
+
+        function applyViewportSetting(isMobile) {
+            const vp = document.getElementById('viewport-meta');
+            if (isMobile) {
+                // スマホ対応 (Responsive scaling)
+                vp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+            } else {
+                // デスクトップ固定幅 (縮小表示による疑似PCビュー)
+                vp.setAttribute('content', 'width=1024');
+            }
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `study_tracker_backup_${getFormattedDate(new Date())}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function clearAllDataConfirm() {
+            showModal("データの全消去", "すべての学習データとボタン・フォルダが消去されます。元に戻すことはできません。", [
+                { text: "キャンセル", primary: false, onClick: closeModal },
+                { text: "消去実行", primary: true, onClick: () => {
+                    localStorage.removeItem(STORAGE_KEY);
+                    location.reload();
+                }}
+            ]);
+        }
+
+        /* ==========================================================================
+           MODAL & UTILITY FUNCTIONS
+           ========================================================================== */
+        function showModal(title, message, buttons) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            const btnContainer = document.getElementById('modal-buttons');
+            btnContainer.innerHTML = '';
+            buttons.forEach(b => {
+                const buttonEl = document.createElement('button');
+                buttonEl.innerText = b.text;
+                buttonEl.className = b.primary
+                    ? "px-4 py-2 bg-sky-600 text-white rounded-lg text-sm font-medium hover:bg-sky-700 transition"
+                    : "px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-300 transition";
+                buttonEl.onclick = b.onClick;
+                btnContainer.appendChild(buttonEl);
+            });
+            document.getElementById('modal-overlay').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+        function getFormattedDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        function formatTime(date) {
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+            });
+        }
+    </script>
 </body>
 </html>
