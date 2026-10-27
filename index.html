@@ -99,8 +99,13 @@
             <div id="daily-goal-container" class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                 <div class="flex justify-between items-end mb-2">
                     <div>
-                        <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300">今日の目標達成度</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">目標: <span id="goal-target-display">--</span></p>
+                        <div class="flex items-center space-x-2">
+                            <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300">今日の目標達成度</h3>
+                            <button onclick="editDailyGoal()" class="text-[10px] text-sky-500 hover:text-sky-700 bg-sky-50 dark:bg-sky-900/40 hover:bg-sky-100 dark:hover:bg-sky-800 px-2 py-0.5 rounded flex items-center transition">
+                                <i class="fa-solid fa-pen mr-1"></i>変更
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">目標: <span id="goal-target-display">--</span></p>
                     </div>
                     <div class="text-right">
                         <span id="goal-current-display" class="text-2xl font-bold text-sky-600 dark:text-sky-400">0</span>
@@ -254,15 +259,6 @@
                     </label>
                 </div>
 
-                <!-- Daily Goal Setting -->
-                <div class="p-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
-                    <div>
-                        <h3 class="font-medium text-sm">1日の目標時間（分）</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">プログレスバーの最大値</p>
-                    </div>
-                    <input type="number" id="setting-daily-goal" onchange="updateSetting('dailyGoalMinutes', this.value)" class="w-24 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm text-right" min="1" step="10">
-                </div>
-
                 <!-- Sound Setting -->
                 <div class="p-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
                     <div>
@@ -291,25 +287,83 @@
                     </select>
                 </div>
 
-                <!-- Auto-Save Status / Data Management -->
+                <!-- Data Management -->
                 <div class="p-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
-                <div class="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">記録する時間</div>
-                <div class="flex items-center justify-center space-x-2">
-                    <input type="number" id="timer-edit-minutes" class="w-24 text-center text-4xl font-bold bg-transparent border-b-2 border-transparent focus:border-sky-500 outline-none text-sky-600 dark:text-sky-400 transition-colors" disabled>
-                    <span class="text-gray-500 font-medium pt-3">分</span>
+                    <div>
+                        <h3 class="font-medium text-sm text-rose-600 dark:text-rose-400">データ管理</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">データのバックアップや初期化を行います</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="exportData()" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition"><i class="fa-solid fa-download mr-1.5"></i>バックアップ</button>
+                        <button onclick="clearAllDataConfirm()" class="flex-1 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-lg text-sm font-medium transition"><i class="fa-solid fa-trash-can mr-1.5"></i>全消去</button>
+                    </div>
                 </div>
             </div>
+        </section>
+    </main>
 
-            <div class="grid grid-cols-3 gap-3">
-                <button onclick="confirmCancelTimer()" class="py-3 bg-gray-100 hover:bg-rose-100 text-gray-600 hover:text-rose-600 dark:bg-gray-700 dark:hover:bg-rose-900/40 dark:text-gray-300 dark:hover:text-rose-400 rounded-xl text-xs font-bold transition duration-200 flex flex-col items-center justify-center">
-                    <i class="fa-solid fa-trash-can mb-1.5 text-base"></i>キャンセル
-                </button>
-                <button id="btn-edit-timer" onclick="toggleEditTimer()" class="py-3 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-400 rounded-xl text-xs font-bold transition duration-200 flex flex-col items-center justify-center border border-amber-200 dark:border-amber-800/50">
-                    <i class="fa-solid fa-pen mb-1.5 text-base"></i>編集
-                </button>
-                <button onclick="saveTimerRecord()" class="py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold transition duration-200 flex flex-col items-center justify-center shadow-lg shadow-sky-500/30">
-                    <i class="fa-solid fa-check mb-1.5 text-base"></i>記録
-                </button>
+    <!-- General Modal Overlay -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm mx-4 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700 transform transition-all">
+            <div class="p-6">
+                <h3 id="modal-title" class="text-lg font-bold text-gray-900 dark:text-white mb-2"></h3>
+                <p id="modal-message" class="text-sm text-gray-500 dark:text-gray-400 mb-6"></p>
+                <div id="modal-buttons" class="flex justify-end space-x-3">
+                    <!-- Buttons will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timer Result Modal -->
+    <div id="timer-result-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm mx-4 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700 transform transition-all">
+            <div class="p-6">
+                <div class="text-center mb-6">
+                    <div class="w-12 h-12 bg-sky-100 dark:bg-sky-900/50 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fa-solid fa-flag-checkered text-sky-500 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">学習お疲れ様でした！</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" id="timer-result-subject">「教科」</p>
+                </div>
+                
+                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 mb-6">
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium text-center">記録する時間</div>
+                    <div class="flex items-center justify-center space-x-2">
+                        <input type="number" id="timer-edit-minutes" class="w-24 text-center text-4xl font-bold bg-transparent border-b-2 border-transparent focus:border-sky-500 outline-none text-sky-600 dark:text-sky-400 transition-colors" disabled>
+                        <span class="text-gray-500 font-medium pt-3">分</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <button onclick="confirmCancelTimer()" class="py-3 bg-gray-100 hover:bg-rose-100 text-gray-600 hover:text-rose-600 dark:bg-gray-700 dark:hover:bg-rose-900/40 dark:text-gray-300 dark:hover:text-rose-400 rounded-xl text-xs font-bold transition duration-200 flex flex-col items-center justify-center">
+                        <i class="fa-solid fa-trash-can mb-1.5 text-base"></i>キャンセル
+                    </button>
+                    <button id="btn-edit-timer" onclick="toggleEditTimer()" class="py-3 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-400 rounded-xl text-xs font-bold transition duration-200 flex flex-col items-center justify-center border border-amber-200 dark:border-amber-800/50">
+                        <i class="fa-solid fa-pen mb-1.5 text-base"></i>編集
+                    </button>
+                    <button onclick="saveTimerRecord()" class="py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold transition duration-200 flex flex-col items-center justify-center shadow-lg shadow-sky-500/30">
+                        <i class="fa-solid fa-check mb-1.5 text-base"></i>記録
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Goal Modal -->
+    <div id="daily-goal-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm mx-4 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700 transform transition-all">
+            <div class="p-6">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">今日の目標時間を設定</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">今日1日の学習目標（分）を入力してください。</p>
+                <div class="flex items-center justify-center space-x-2 mb-6 bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4">
+                    <input type="number" id="daily-goal-input" class="w-24 text-center text-4xl font-bold bg-transparent border-b-2 border-sky-500 focus:border-sky-400 outline-none text-sky-600 dark:text-sky-400 transition-colors" min="1" step="10">
+                    <span class="text-gray-500 font-medium pt-3">分</span>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button onclick="closeDailyGoalModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 rounded-lg text-sm font-bold transition">キャンセル</button>
+                    <button onclick="saveDailyGoal()" class="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-sm font-bold transition shadow-md shadow-sky-500/20">保存</button>
+                </div>
             </div>
         </div>
     </div>
@@ -326,10 +380,10 @@
                 weekStart: 1, 
                 logViewMode: 'calendar',
                 mobileMode: false, // スマホ対応レイアウト (デフォルトオフ)
-                dailyGoalMinutes: 180, // 今日の目標時間 (デフォルト3時間)
                 soundEnabled: true, // 効果音・バイブ
                 pulseInterval: 25 // 集中パルス(分) 0でオフ
             },
+            dailyGoals: {}, // 日ごとの目標時間
             currentFolderId: 'root',
             folders: [],
             subjects: [],
@@ -410,6 +464,28 @@
             }());
         }
 
+        function loadData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.settings) appData.settings = { ...appData.settings, ...parsed.settings };
+                    if (parsed.dailyGoals) appData.dailyGoals = parsed.dailyGoals;
+                    if (parsed.folders) appData.folders = parsed.folders;
+                    if (parsed.subjects) appData.subjects = parsed.subjects;
+                    if (parsed.logs) appData.logs = parsed.logs;
+                    if (parsed.activeTimer) appData.activeTimer = parsed.activeTimer;
+                    if (parsed.currentFolderId) appData.currentFolderId = parsed.currentFolderId;
+                } catch (e) {
+                    console.error("データの読み込みに失敗しました", e);
+                }
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+        }
+
         window.onload = function() {
             loadData();
             applySettings();
@@ -427,7 +503,10 @@
             const totalSec = todayLogs.reduce((acc, curr) => acc + curr.durationSec, 0);
             const totalMins = Math.round(totalSec / 60);
             
-            const goalMins = appData.settings.dailyGoalMinutes || 180;
+            let goalMins = 180;
+            if (appData.dailyGoals && appData.dailyGoals[todayStr] !== undefined) {
+                goalMins = appData.dailyGoals[todayStr];
+            }
             const progress = Math.min(100, (totalMins / goalMins) * 100);
             
             document.getElementById('goal-current-display').innerText = totalMins;
@@ -448,6 +527,34 @@
                 msgEl.innerText = `目標達成まであと ${remain} 分`;
                 msgEl.className = "text-[10px] text-right text-gray-500 dark:text-gray-400 font-medium mt-1";
             }
+        }
+
+        function editDailyGoal() {
+            const todayStr = getFormattedDate(new Date());
+            let currentGoal = 180;
+            if (appData.dailyGoals && appData.dailyGoals[todayStr] !== undefined) {
+                currentGoal = appData.dailyGoals[todayStr];
+            }
+            document.getElementById('daily-goal-input').value = currentGoal;
+            document.getElementById('daily-goal-modal').classList.remove('hidden');
+        }
+
+        function closeDailyGoalModal() {
+            document.getElementById('daily-goal-modal').classList.add('hidden');
+        }
+
+        function saveDailyGoal() {
+            const inputVal = parseInt(document.getElementById('daily-goal-input').value);
+            if (isNaN(inputVal) || inputVal <= 0) {
+                showModal("エラー", "有効な数値を入力してください。", [{ text: "OK", primary: true, onClick: closeModal }]);
+                return;
+            }
+            const todayStr = getFormattedDate(new Date());
+            if (!appData.dailyGoals) appData.dailyGoals = {};
+            appData.dailyGoals[todayStr] = inputVal;
+            saveData();
+            renderProgress();
+            closeDailyGoalModal();
         }
 
         /* ==========================================================================
@@ -793,7 +900,11 @@
 
             // 目標達成判定
             const newTotalMins = prevTotalMins + finalMins;
-            const goalMins = appData.settings.dailyGoalMinutes || 180;
+            let goalMins = 180;
+            if (appData.dailyGoals && appData.dailyGoals[todayStr] !== undefined) {
+                goalMins = appData.dailyGoals[todayStr];
+            }
+            
             if (prevTotalMins < goalMins && newTotalMins >= goalMins) {
                 setTimeout(() => {
                     playSound('fanfare');
@@ -1076,7 +1187,6 @@
 
         function applySettings() {
             // 初期値がない場合の補完
-            if (appData.settings.dailyGoalMinutes === undefined) appData.settings.dailyGoalMinutes = 180;
             if (appData.settings.soundEnabled === undefined) appData.settings.soundEnabled = true;
             if (appData.settings.pulseInterval === undefined) appData.settings.pulseInterval = 25;
 
@@ -1085,7 +1195,6 @@
             document.getElementById('setting-theme').value = appData.settings.theme;
             document.getElementById('setting-week-start').value = appData.settings.weekStart;
             
-            document.getElementById('setting-daily-goal').value = appData.settings.dailyGoalMinutes;
             document.getElementById('setting-sound').checked = appData.settings.soundEnabled;
             document.getElementById('setting-pulse').value = appData.settings.pulseInterval;
             
@@ -1124,11 +1233,10 @@
             if (key === 'soundEnabled') {
                 appData.settings[key] = value;
                 if(value) initTone(); // 音をオンにしたら初期化試行
-            } else if (key === 'dailyGoalMinutes' || key === 'pulseInterval') {
+            } else if (key === 'pulseInterval') {
                 appData.settings[key] = parseInt(value) || 0;
             }
             saveData();
-            if (key === 'dailyGoalMinutes') renderProgress();
         }
 
         function applyViewportSetting(isMobile) {
