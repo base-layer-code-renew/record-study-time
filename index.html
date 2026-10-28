@@ -173,14 +173,18 @@
             </div>
 
             <!-- Daily Summary Stats -->
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">選択日の合計時間</span>
-                    <div id="log-total-time" class="text-2xl font-bold text-sky-600 dark:text-sky-400 mt-1">0分</div>
+            <div class="grid grid-cols-3 gap-3 sm:gap-4">
+                <div class="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <span class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium">合計時間</span>
+                    <div id="log-total-time" class="text-xl sm:text-2xl font-bold text-sky-600 dark:text-sky-400 mt-1">0分</div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">セッション数</span>
-                    <div id="log-session-count" class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">0回</div>
+                <div class="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <span class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium">目標時間</span>
+                    <div id="log-goal-time" class="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">0分</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <span class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium">セッション</span>
+                    <div id="log-session-count" class="text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">0回</div>
                 </div>
             </div>
 
@@ -255,6 +259,18 @@
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="setting-mobile-mode" onchange="updateMobileModeSetting(this.checked)" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-sky-600"></div>
+                    </label>
+                </div>
+
+                <!-- Color Log Setting -->
+                <div class="p-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+                    <div>
+                        <h3 class="font-medium text-sm">履歴の色分け表示</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">履歴タブのグラフやリストを科目の色で分類します</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="setting-color-log" onchange="updateSetting('colorLogEnabled', this.checked)" class="sr-only peer">
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-sky-600"></div>
                     </label>
                 </div>
@@ -368,6 +384,77 @@
         </div>
     </div>
 
+    <!-- Subject Menu Modal -->
+    <div id="subject-menu-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm mx-4 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700 transform transition-all">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="subject-menu-title" class="text-lg font-bold text-gray-900 dark:text-white truncate"></h3>
+                    <button onclick="closeSubjectMenu()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+                </div>
+                <div class="space-y-3">
+                    <button onclick="openSubjectColorMenu()" class="w-full flex items-center p-3 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/50 dark:hover:bg-gray-700 transition">
+                        <div class="w-8 h-8 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-500 flex items-center justify-center mr-3"><i class="fa-solid fa-palette"></i></div>
+                        <span class="font-medium text-gray-700 dark:text-gray-200">色分け設定</span>
+                    </button>
+                    <button onclick="openSubjectHistory()" class="w-full flex items-center p-3 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/50 dark:hover:bg-gray-700 transition">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-500 flex items-center justify-center mr-3"><i class="fa-solid fa-chart-line"></i></div>
+                        <span class="font-medium text-gray-700 dark:text-gray-200">学習履歴</span>
+                    </button>
+                    <button onclick="confirmDeleteSubject()" class="w-full flex items-center p-3 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 transition">
+                        <div class="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-500 flex items-center justify-center mr-3"><i class="fa-solid fa-trash-can"></i></div>
+                        <span class="font-medium text-rose-600 dark:text-rose-400">削除</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject Color Modal -->
+    <div id="subject-color-modal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm mx-4 rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">色を選択</h3>
+            <div class="flex justify-around mb-6">
+                <button onclick="setSubjectColor('rose')" class="w-12 h-12 rounded-full bg-rose-500 hover:scale-110 transition shadow-lg shadow-rose-500/30 ring-2 ring-transparent focus:ring-rose-300"></button>
+                <button onclick="setSubjectColor('sky')" class="w-12 h-12 rounded-full bg-sky-500 hover:scale-110 transition shadow-lg shadow-sky-500/30 ring-2 ring-transparent focus:ring-sky-300"></button>
+                <button onclick="setSubjectColor('purple')" class="w-12 h-12 rounded-full bg-purple-500 hover:scale-110 transition shadow-lg shadow-purple-500/30 ring-2 ring-transparent focus:ring-purple-300"></button>
+                <button onclick="setSubjectColor('amber')" class="w-12 h-12 rounded-full bg-amber-500 hover:scale-110 transition shadow-lg shadow-amber-500/30 ring-2 ring-transparent focus:ring-amber-300"></button>
+                <button onclick="setSubjectColor('emerald')" class="w-12 h-12 rounded-full bg-emerald-500 hover:scale-110 transition shadow-lg shadow-emerald-500/30 ring-2 ring-transparent focus:ring-emerald-300"></button>
+            </div>
+            <div class="flex justify-end">
+                <button onclick="closeSubjectColorModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 rounded-lg text-sm font-medium">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject History Modal -->
+    <div id="subject-history-modal" class="fixed inset-0 bg-black/50 z-[60] hidden flex flex-col items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-lg rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                <h3 id="sh-title" class="text-lg font-bold text-gray-900 dark:text-white"></h3>
+                <button onclick="closeSubjectHistory()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-4 flex-1 overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <select id="sh-period-select" onchange="renderSubjectHistory()" class="bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 text-sm font-medium focus:outline-none">
+                        <option value="day">日ごと（時間別）</option>
+                        <option value="week">1週間</option>
+                        <option value="4week">4週間</option>
+                    </select>
+                    <div id="sh-date-nav" class="flex items-center space-x-2">
+                        <button onclick="changeShDate(-1)" class="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><i class="fa-solid fa-chevron-left"></i></button>
+                        <span id="sh-date-display" class="text-sm font-medium min-w-[80px] text-center"></span>
+                        <button onclick="changeShDate(1)" class="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div class="relative h-56 w-full">
+                    <canvas id="sh-chart"></canvas>
+                </div>
+                <div id="sh-total" class="mt-4 text-center text-sm font-bold text-gray-600 dark:text-gray-300"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
         /* ==========================================================================
            STATE MANAGEMENT & INITIALIZATION
@@ -381,7 +468,8 @@
                 logViewMode: 'calendar',
                 mobileMode: false, // スマホ対応レイアウト (デフォルトオフ)
                 soundEnabled: true, // 効果音・バイブ
-                pulseInterval: 25 // 集中パルス(分) 0でオフ
+                pulseInterval: 25, // 集中パルス(分) 0でオフ
+                colorLogEnabled: false // 追加: 色分け機能
             },
             dailyGoals: {}, // 日ごとの目標時間
             currentFolderId: 'root',
@@ -389,6 +477,14 @@
             subjects: [],
             logs: [], 
             activeTimer: null 
+        };
+
+        const subjectColors = {
+            sky: { bg: 'bg-sky-50 dark:bg-sky-900/20', icon: 'text-sky-500', activeRing: 'ring-sky-500', activeBg: 'bg-sky-100 dark:bg-sky-900/50', borderHover: 'hover:border-sky-300 dark:hover:border-sky-600', hex: '#0284c7', hexLight: '#38bdf8' },
+            rose: { bg: 'bg-rose-50 dark:bg-rose-900/20', icon: 'text-rose-500', activeRing: 'ring-rose-500', activeBg: 'bg-rose-100 dark:bg-rose-900/50', borderHover: 'hover:border-rose-300 dark:hover:border-rose-600', hex: '#e11d48', hexLight: '#fb7185' },
+            purple: { bg: 'bg-purple-50 dark:bg-purple-900/20', icon: 'text-purple-500', activeRing: 'ring-purple-500', activeBg: 'bg-purple-100 dark:bg-purple-900/50', borderHover: 'hover:border-purple-300 dark:hover:border-purple-600', hex: '#9333ea', hexLight: '#c084fc' },
+            amber: { bg: 'bg-amber-50 dark:bg-amber-900/20', icon: 'text-amber-500', activeRing: 'ring-amber-500', activeBg: 'bg-amber-100 dark:bg-amber-900/50', borderHover: 'hover:border-amber-300 dark:hover:border-amber-600', hex: '#d97706', hexLight: '#fbbf24' },
+            emerald: { bg: 'bg-emerald-50 dark:bg-emerald-900/20', icon: 'text-emerald-500', activeRing: 'ring-emerald-500', activeBg: 'bg-emerald-100 dark:bg-emerald-900/50', borderHover: 'hover:border-emerald-300 dark:hover:border-emerald-600', hex: '#059669', hexLight: '#34d399' }
         };
 
         let activeTab = 'study';
@@ -571,7 +667,7 @@
             const input = document.getElementById('new-item-title');
             const title = input.value.trim();
             if (!title) return;
-            const newItem = { id: 'sub_' + Date.now(), parentId: appData.currentFolderId, name: title, order: Date.now() };
+            const newItem = { id: 'sub_' + Date.now(), parentId: appData.currentFolderId, name: title, order: Date.now(), color: 'sky' };
             appData.subjects.push(newItem);
             input.value = '';
             saveData();
@@ -649,9 +745,10 @@
 
             currentSubjects.forEach(s => {
                 const isActive = appData.activeTimer && appData.activeTimer.subjectId === s.id;
-                const activeClass = isActive ? 'ring-2 ring-sky-500 bg-sky-50 dark:bg-sky-900/30' : 'bg-gradient-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 hover:border-sky-300 dark:hover:border-sky-600';
-                const iconClass = isActive ? 'text-sky-500 animate-pulse' : 'text-sky-400 dark:text-sky-500';
-                const bgIconClass = isActive ? 'bg-sky-100 dark:bg-sky-900/50' : 'bg-sky-50 dark:bg-sky-900/20';
+                const c = subjectColors[s.color] || subjectColors.sky;
+                const activeClass = isActive ? `ring-2 ${c.activeRing} ${c.activeBg}` : `bg-gradient-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 ${c.borderHover}`;
+                const iconClass = isActive ? `${c.icon} animate-pulse` : `${c.icon} opacity-90`;
+                const bgIconClass = isActive ? c.activeBg : c.bg;
                 
                 // 今日の学習時間を計算
                 const subjectLogs = appData.logs.filter(l => l.subjectId === s.id && l.dateStr === todayStr);
@@ -664,7 +761,7 @@
                 html += `
                 <div data-id="${s.id}" data-type="subject" class="group relative border border-gray-200 dark:border-gray-700 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col items-center justify-center min-h-[120px] sm:min-h-[140px] ${activeClass}" onclick="startTimer('${s.id}', '${escapeHtml(s.name)}')">
                     ${badgeHtml}
-                    <button class="absolute top-2 right-2 w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center" onclick="event.stopPropagation(); deleteItem('${s.id}', 'subject')"><i class="fa-solid fa-xmark text-sm"></i></button>
+                    <button class="absolute top-2 right-2 w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center" onclick="event.stopPropagation(); openSubjectMenu('${s.id}')"><i class="fa-solid fa-ellipsis-vertical text-sm"></i></button>
                     <div class="w-14 h-14 sm:w-16 sm:h-16 mb-2 sm:mb-3 rounded-full ${bgIconClass} flex items-center justify-center group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-book-open text-2xl sm:text-3xl ${iconClass} drop-shadow-sm"></i>
                     </div>
@@ -712,6 +809,170 @@
                     closeModal();
                 }}
             ]);
+        }
+
+        /* ==========================================================================
+           SUBJECT MENU & HISTORY LOGIC
+           ========================================================================== */
+        let currentEditingSubjectId = null;
+
+        function openSubjectMenu(id) {
+            currentEditingSubjectId = id;
+            const s = appData.subjects.find(x => x.id === id);
+            if (!s) return;
+            document.getElementById('subject-menu-title').innerText = s.name;
+            document.getElementById('subject-menu-modal').classList.remove('hidden');
+        }
+
+        function closeSubjectMenu() {
+            document.getElementById('subject-menu-modal').classList.add('hidden');
+            currentEditingSubjectId = null;
+        }
+
+        function openSubjectColorMenu() {
+            document.getElementById('subject-menu-modal').classList.add('hidden');
+            document.getElementById('subject-color-modal').classList.remove('hidden');
+        }
+
+        function closeSubjectColorModal() {
+            document.getElementById('subject-color-modal').classList.add('hidden');
+        }
+
+        function setSubjectColor(colorStr) {
+            if (currentEditingSubjectId) {
+                const s = appData.subjects.find(x => x.id === currentEditingSubjectId);
+                if (s) {
+                    s.color = colorStr;
+                    saveData();
+                    renderItems();
+                }
+            }
+            closeSubjectColorModal();
+        }
+
+        function confirmDeleteSubject() {
+            document.getElementById('subject-menu-modal').classList.add('hidden');
+            deleteItem(currentEditingSubjectId, 'subject');
+        }
+
+        // --- 科目別履歴 ---
+        let shChartInstance = null;
+        let shCurrentDate = new Date();
+
+        function openSubjectHistory() {
+            document.getElementById('subject-menu-modal').classList.add('hidden');
+            const s = appData.subjects.find(x => x.id === currentEditingSubjectId);
+            if (!s) return;
+            document.getElementById('sh-title').innerText = `${s.name} の履歴`;
+            document.getElementById('subject-history-modal').classList.remove('hidden');
+            shCurrentDate = new Date();
+            renderSubjectHistory();
+        }
+
+        function closeSubjectHistory() {
+            document.getElementById('subject-history-modal').classList.add('hidden');
+        }
+
+        function changeShDate(offset) {
+            const mode = document.getElementById('sh-period-select').value;
+            if (mode === 'day') {
+                shCurrentDate.setDate(shCurrentDate.getDate() + offset);
+            } else if (mode === 'week') {
+                shCurrentDate.setDate(shCurrentDate.getDate() + (offset * 7));
+            } else {
+                shCurrentDate.setDate(shCurrentDate.getDate() + (offset * 28));
+            }
+            renderSubjectHistory();
+        }
+
+        function renderSubjectHistory() {
+            if (!currentEditingSubjectId) return;
+            const mode = document.getElementById('sh-period-select').value;
+            const s = appData.subjects.find(x => x.id === currentEditingSubjectId);
+            const cInfo = subjectColors[s.color] || subjectColors.sky;
+            const isDark = document.documentElement.classList.contains('dark');
+            const barColor = isDark ? cInfo.hexLight : cInfo.hex;
+            const textColor = isDark ? '#9ca3af' : '#6b7280'; 
+            const gridColor = isDark ? '#374151' : '#e5e7eb'; 
+
+            let labels = [];
+            let data = [];
+            let totalSec = 0;
+
+            if (mode === 'day') {
+                document.getElementById('sh-date-display').innerText = getFormattedDate(shCurrentDate);
+                const dateStr = getFormattedDate(shCurrentDate);
+                const dayLogs = appData.logs.filter(l => l.subjectId === currentEditingSubjectId && l.dateStr === dateStr);
+                
+                // 0〜23時の配列
+                let hourlyMins = Array(24).fill(0);
+                dayLogs.forEach(log => {
+                    totalSec += log.durationSec;
+                    const start = new Date(log.startTime);
+                    let currentHour = start.getHours();
+                    let currentMinute = start.getMinutes();
+                    let remainingSec = log.durationSec;
+                    
+                    while (remainingSec > 0 && currentHour < 24) {
+                        const secToNextHour = (60 - currentMinute) * 60;
+                        const secInThisHour = Math.min(remainingSec, secToNextHour);
+                        hourlyMins[currentHour] += secInThisHour / 60;
+                        remainingSec -= secInThisHour;
+                        currentHour++;
+                        currentMinute = 0;
+                    }
+                });
+                
+                labels = Array.from({length: 24}, (_, i) => `${i}時`);
+                data = hourlyMins.map(m => Math.round(m));
+            } else {
+                const pDays = mode === 'week' ? 7 : 28;
+                let current = new Date(shCurrentDate);
+                // 遡る
+                current.setDate(current.getDate() - pDays + 1);
+                const startDateStr = getFormattedDate(current);
+                const endDateStr = getFormattedDate(shCurrentDate);
+                document.getElementById('sh-date-display').innerText = `${startDateStr} ~ ${endDateStr}`;
+
+                for (let i = 0; i < pDays; i++) {
+                    const dateStr = getFormattedDate(current);
+                    const dayLogs = appData.logs.filter(l => l.subjectId === currentEditingSubjectId && l.dateStr === dateStr);
+                    const daySec = dayLogs.reduce((acc, curr) => acc + curr.durationSec, 0);
+                    totalSec += daySec;
+                    labels.push(`${current.getMonth()+1}/${current.getDate()}`);
+                    data.push(Math.round(daySec / 60));
+                    current.setDate(current.getDate() + 1);
+                }
+            }
+
+            const totalMins = Math.round(totalSec / 60);
+            const h = Math.floor(totalMins / 60);
+            const m = totalMins % 60;
+            document.getElementById('sh-total').innerText = `合計: ${h > 0 ? h + '時間' : ''}${m}分`;
+
+            const ctx = document.getElementById('sh-chart').getContext('2d');
+            if (shChartInstance) shChartInstance.destroy();
+            shChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '学習時間(分)',
+                        data: data,
+                        backgroundColor: barColor,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: textColor, font: { size: 10 } }, grid: { display: false } },
+                        y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor }, beginAtZero: true }
+                    }
+                }
+            });
         }
 
         /* ==========================================================================
@@ -947,6 +1208,12 @@
             const totalMins = Math.round(totalSec / 60);
 
             document.getElementById('log-total-time').innerText = `${totalMins}分`;
+            
+            let goalMins = appData.dailyGoals && appData.dailyGoals[selectedLogDate] !== undefined ? appData.dailyGoals[selectedLogDate] : 180;
+            const gh = Math.floor(goalMins / 60);
+            const gm = goalMins % 60;
+            document.getElementById('log-goal-time').innerText = gm > 0 ? `${gh}時間${gm}分` : `${gh}時間`;
+            
             document.getElementById('log-session-count').innerText = `${filteredLogs.length}回`;
 
             const logList = document.getElementById('log-list');
@@ -955,25 +1222,62 @@
             if (filteredLogs.length === 0) {
                 logList.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">この日の学習記録はありません</p>`;
             } else {
-                logList.innerHTML = filteredLogs.map(log => {
-                    const timeRangeStr = `${formatTime(new Date(log.startTime))} ～ ${formatTime(new Date(log.endTime))}`;
-                    const mins = Math.max(1, Math.round(log.durationSec / 60));
-                    return `
-                        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-800">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-2 h-8 bg-sky-500 rounded-full"></div>
-                                <div>
-                                    <div class="font-bold text-sm text-gray-800 dark:text-gray-200">${escapeHtml(log.subjectName)}</div>
-                                    <div class="text-xs text-gray-400">${timeRangeStr}</div>
+                if (appData.settings.colorLogEnabled) {
+                    // 色分け機能オン：科目ごとに集計し、時間順にリスト化
+                    const subjectTotals = {};
+                    filteredLogs.forEach(log => {
+                        if(!subjectTotals[log.subjectId]) {
+                            const subj = appData.subjects.find(s => s.id === log.subjectId);
+                            subjectTotals[log.subjectId] = {
+                                name: log.subjectName,
+                                color: subj ? subj.color : 'sky',
+                                totalSec: 0
+                            };
+                        }
+                        subjectTotals[log.subjectId].totalSec += log.durationSec;
+                    });
+                    
+                    const sortedSubjects = Object.values(subjectTotals).sort((a, b) => b.totalSec - a.totalSec);
+                    
+                    logList.innerHTML = sortedSubjects.map(st => {
+                        const mins = Math.max(1, Math.round(st.totalSec / 60));
+                        const cInfo = subjectColors[st.color] || subjectColors.sky;
+                        const isDark = document.documentElement.classList.contains('dark');
+                        return `
+                            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-800">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-2 h-8 rounded-full" style="background-color: ${isDark ? cInfo.hexLight : cInfo.hex}"></div>
+                                    <div class="font-bold text-sm text-gray-800 dark:text-gray-200">${escapeHtml(st.name)}</div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="font-bold text-base" style="color: ${isDark ? cInfo.hexLight : cInfo.hex}">${mins}</span>
+                                    <span class="text-xs text-gray-500">分</span>
                                 </div>
                             </div>
-                            <div class="text-right">
-                                <span class="font-bold text-sky-600 dark:text-sky-400 text-base">${mins}</span>
-                                <span class="text-xs text-gray-500">分</span>
+                        `;
+                    }).join('');
+                } else {
+                    // 通常リスト
+                    logList.innerHTML = filteredLogs.map(log => {
+                        const timeRangeStr = `${formatTime(new Date(log.startTime))} ～ ${formatTime(new Date(log.endTime))}`;
+                        const mins = Math.max(1, Math.round(log.durationSec / 60));
+                        return `
+                            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-800">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-2 h-8 bg-sky-500 rounded-full"></div>
+                                    <div>
+                                        <div class="font-bold text-sm text-gray-800 dark:text-gray-200">${escapeHtml(log.subjectName)}</div>
+                                        <div class="text-xs text-gray-400">${timeRangeStr}</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="font-bold text-sky-600 dark:text-sky-400 text-base">${mins}</span>
+                                    <span class="text-xs text-gray-500">分</span>
+                                </div>
                             </div>
-                        </div>
-                    `;
-                }).join('');
+                        `;
+                    }).join('');
+                }
             }
             renderWeeklyHeatmap();
         }
@@ -1081,61 +1385,122 @@
             const gridColor = isDark ? '#374151' : '#e5e7eb'; 
 
             const labels = days.map(d => `${d.month}/${d.dayNum}`);
-            const data = days.map(d => d.mins);
-            const bgColors = days.map(d => d.dateStr === selectedLogDate ? '#fbbf24' : (isDark ? '#0284c7' : '#38bdf8')); 
-
+            
             if (chartInstance) chartInstance.destroy();
 
-            chartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: '学習時間',
-                        data: data,
-                        backgroundColor: bgColors,
-                        borderRadius: 4,
-                        borderSkipped: false
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    onClick: (e, elements) => {
-                        if (elements.length > 0) {
-                            const index = elements[0].index;
-                            onDateSelected(days[index].dateStr);
+            if (appData.settings.colorLogEnabled) {
+                // Stacked Bar Chart
+                const datasetsMap = {};
+                // 全色定義を用意
+                Object.keys(subjectColors).forEach(colorKey => {
+                    datasetsMap[colorKey] = {
+                        label: colorKey,
+                        data: Array(days.length).fill(0),
+                        backgroundColor: isDark ? subjectColors[colorKey].hexLight : subjectColors[colorKey].hex,
+                        borderRadius: 4
+                    };
+                });
+                
+                days.forEach((d, idx) => {
+                    const dayLogs = appData.logs.filter(l => l.dateStr === d.dateStr);
+                    dayLogs.forEach(log => {
+                        const subj = appData.subjects.find(s => s.id === log.subjectId);
+                        const c = subj ? subj.color : 'sky';
+                        if(datasetsMap[c]) {
+                            datasetsMap[c].data[idx] += (log.durationSec / 60);
                         }
+                    });
+                });
+
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: Object.values(datasetsMap).filter(ds => ds.data.some(v => v > 0)) // データがある色だけ
                     },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let val = context.raw;
-                                    if (val >= 60) {
-                                        const h = Math.floor(val / 60);
-                                        const m = val % 60;
-                                        return m > 0 ? `${h}時間${m}分` : `${h}時間`;
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        onClick: (e, elements) => {
+                            if (elements.length > 0) onDateSelected(days[elements[0].index].dateStr);
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${Math.round(context.raw)}分`;
                                     }
-                                    return `${val}分`;
                                 }
                             }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 45 },
-                            grid: { display: false }
                         },
-                        y: {
-                            ticks: { color: textColor, font: { size: 10 } },
-                            grid: { color: gridColor },
-                            beginAtZero: true
+                        scales: {
+                            x: {
+                                stacked: true,
+                                ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 45 },
+                                grid: { display: false }
+                            },
+                            y: {
+                                stacked: true,
+                                ticks: { color: textColor, font: { size: 10 } },
+                                grid: { color: gridColor },
+                                beginAtZero: true
+                            }
                         }
                     }
-                }
-            });
+                });
+            } else {
+                // Normal Bar Chart
+                const data = days.map(d => d.mins);
+                const bgColors = days.map(d => d.dateStr === selectedLogDate ? '#fbbf24' : (isDark ? '#0284c7' : '#38bdf8')); 
+
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '学習時間',
+                            data: data,
+                            backgroundColor: bgColors,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        onClick: (e, elements) => {
+                            if (elements.length > 0) onDateSelected(days[elements[0].index].dateStr);
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let val = context.raw;
+                                        if (val >= 60) {
+                                            const h = Math.floor(val / 60);
+                                            const m = val % 60;
+                                            return m > 0 ? `${h}時間${m}分` : `${h}時間`;
+                                        }
+                                        return `${val}分`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 45 },
+                                grid: { display: false }
+                            },
+                            y: {
+                                ticks: { color: textColor, font: { size: 10 } },
+                                grid: { color: gridColor },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
         }
 
         function changeLogDate(offsetDays) {
@@ -1189,6 +1554,7 @@
             // 初期値がない場合の補完
             if (appData.settings.soundEnabled === undefined) appData.settings.soundEnabled = true;
             if (appData.settings.pulseInterval === undefined) appData.settings.pulseInterval = 25;
+            if (appData.settings.colorLogEnabled === undefined) appData.settings.colorLogEnabled = false;
 
             const isDark = appData.settings.theme === 'dark';
             document.documentElement.classList.toggle('dark', isDark);
@@ -1196,6 +1562,7 @@
             document.getElementById('setting-week-start').value = appData.settings.weekStart;
             
             document.getElementById('setting-sound').checked = appData.settings.soundEnabled;
+            document.getElementById('setting-color-log').checked = appData.settings.colorLogEnabled;
             document.getElementById('setting-pulse').value = appData.settings.pulseInterval;
             
             // Viewport/Mobile Setting
@@ -1232,11 +1599,14 @@
             if(!appData.settings) appData.settings = {};
             if (key === 'soundEnabled') {
                 appData.settings[key] = value;
-                if(value) initTone(); // 音をオンにしたら初期化試行
+                if(value) initTone(); 
             } else if (key === 'pulseInterval') {
                 appData.settings[key] = parseInt(value) || 0;
+            } else {
+                appData.settings[key] = value;
             }
             saveData();
+            if(activeTab === 'logs') renderLogs();
         }
 
         function applyViewportSetting(isMobile) {
