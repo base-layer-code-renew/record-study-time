@@ -194,6 +194,7 @@
                     <div class="flex items-center space-x-2">
                         <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300">学習マップ</h3>
                         <select id="graph-period-select" onchange="renderWeeklyHeatmap()" class="hidden bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-0.5 text-xs focus:outline-none">
+                            <option value="1">1日（時間別）</option>
                             <option value="7">1週間</option>
                             <option value="14">2週間</option>
                             <option value="28" selected>4週間</option>
@@ -1355,8 +1356,13 @@
             } else {
                 graphSelect.classList.remove('hidden');
                 
-                // グラフ表示用のデータ生成（選択した期間分）
                 const pDays = parseInt(graphSelect.value) || 28;
+                if (pDays === 1) {
+                    renderDailyChart(selectedLogDate);
+                    return;
+                }
+
+                // グラフ表示用のデータ生成（選択した期間分）
                 let current = new Date(today);
                 current.setDate(current.getDate() - pDays + 1);
                 
@@ -1375,6 +1381,118 @@
                     current.setDate(current.getDate() + 1);
                 }
                 renderChart(days);
+            }
+        }
+
+        function renderDailyChart(dateStr) {
+            const ctx = document.getElementById('weekly-graph').getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            const textColor = isDark ? '#9ca3af' : '#6b7280'; 
+            const gridColor = isDark ? '#374151' : '#e5e7eb'; 
+
+            const labels = Array.from({length: 24}, (_, i) => `${i}時`);
+            
+            if (chartInstance) chartInstance.destroy();
+
+            const dayLogs = appData.logs.filter(l => l.dateStr === dateStr);
+
+            const tooltipCallback = {
+                label: function(context) {
+                    let val = context.raw;
+                    if (val >= 60) {
+                        const h = Math.floor(val / 60);
+                        const m = Math.round(val % 60);
+                        return m > 0 ? `${h}時間${m}分` : `${h}時間`;
+                    }
+                    return `${Math.round(val)}分`;
+                }
+            };
+
+            if (appData.settings.colorLogEnabled) {
+                const datasetsMap = {};
+                Object.keys(subjectColors).forEach(colorKey => {
+                    datasetsMap[colorKey] = {
+                        label: colorKey,
+                        data: Array(24).fill(0),
+                        backgroundColor: isDark ? subjectColors[colorKey].hexLight : subjectColors[colorKey].hex,
+                        borderRadius: 4
+                    };
+                });
+                
+                dayLogs.forEach(log => {
+                    const subj = appData.subjects.find(s => s.id === log.subjectId);
+                    const c = subj ? subj.color : 'sky';
+                    
+                    const start = new Date(log.startTime);
+                    let currentHour = start.getHours();
+                    let currentMinute = start.getMinutes();
+                    let remainingSec = log.durationSec;
+                    
+                    while (remainingSec > 0 && currentHour < 24) {
+                        const secToNextHour = (60 - currentMinute) * 60;
+                        const secInThisHour = Math.min(remainingSec, secToNextHour);
+                        datasetsMap[c].data[currentHour] += secInThisHour / 60;
+                        remainingSec -= secInThisHour;
+                        currentHour++;
+                        currentMinute = 0;
+                    }
+                });
+
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: Object.values(datasetsMap).filter(ds => ds.data.some(v => v > 0))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { callbacks: tooltipCallback } },
+                        scales: {
+                            x: { stacked: true, ticks: { color: textColor, font: { size: 10 } }, grid: { display: false } },
+                            y: { stacked: true, ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor }, beginAtZero: true }
+                        }
+                    }
+                });
+            } else {
+                const data = Array(24).fill(0);
+                dayLogs.forEach(log => {
+                    const start = new Date(log.startTime);
+                    let currentHour = start.getHours();
+                    let currentMinute = start.getMinutes();
+                    let remainingSec = log.durationSec;
+                    
+                    while (remainingSec > 0 && currentHour < 24) {
+                        const secToNextHour = (60 - currentMinute) * 60;
+                        const secInThisHour = Math.min(remainingSec, secToNextHour);
+                        data[currentHour] += secInThisHour / 60;
+                        remainingSec -= secInThisHour;
+                        currentHour++;
+                        currentMinute = 0;
+                    }
+                });
+                
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '学習時間',
+                            data: data,
+                            backgroundColor: isDark ? '#0284c7' : '#38bdf8',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { callbacks: tooltipCallback } },
+                        scales: {
+                            x: { ticks: { color: textColor, font: { size: 10 } }, grid: { display: false } },
+                            y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor }, beginAtZero: true }
+                        }
+                    }
+                });
             }
         }
         
@@ -1620,14 +1738,38 @@
             }
         }
 
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `study_tracker_backup_${getFormattedDate(new Date())}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
+        async function exportData() {
+            const dataStr = JSON.stringify(appData, null, 2);
+            const fileName = `study_tracker_backup_${getFormattedDate(new Date())}.json`;
+            
+            try {
+                // File System Access API (PC等でサポートされている場合)
+                if (window.showSaveFilePicker) {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: fileName,
+                        types: [{
+                            description: 'JSON File',
+                            accept: {'application/json': ['.json']},
+                        }],
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(dataStr);
+                    await writable.close();
+                } else {
+                    // Fallback: 従来のアンカーダウンロード
+                    const blob = new Blob([dataStr], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const downloadAnchor = document.createElement('a');
+                    downloadAnchor.href = url;
+                    downloadAnchor.download = fileName;
+                    document.body.appendChild(downloadAnchor);
+                    downloadAnchor.click();
+                    document.body.removeChild(downloadAnchor);
+                    URL.revokeObjectURL(url);
+                }
+            } catch (error) {
+                console.log("バックアップをキャンセル、またはエラーが発生しました", error);
+            }
         }
 
         function clearAllDataConfirm() {
