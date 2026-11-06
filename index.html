@@ -82,6 +82,9 @@
                 </div>
             </div>
             <div class="flex items-center space-x-2">
+                <button id="timer-pause-btn" onclick="togglePauseTimer()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium text-sm transition shadow-sm flex items-center">
+                    <i class="fa-solid fa-pause mr-1.5" id="timer-pause-icon"></i><span id="timer-pause-text">一時停止</span>
+                </button>
                 <button onclick="stopTimer()" class="px-4 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg font-medium text-sm transition shadow-sm flex items-center">
                     <i class="fa-solid fa-stop mr-1.5"></i>終了・記録
                 </button>
@@ -327,6 +330,18 @@
                     </label>
                 </div>
 
+                <!-- Enter to Save Setting -->
+                <div class="p-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+                    <div>
+                        <h3 class="font-medium text-sm">Enterキーで記録完了</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">メモや目標入力中にEnterを押すと保存します</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="setting-enter-save" onchange="updateSetting('enterToSave', this.checked)" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-sky-600"></div>
+                    </label>
+                </div>
+
                 <!-- Data Management -->
                 <div class="p-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
                     <div>
@@ -343,8 +358,8 @@
         </section>
     </main>
 
-    <!-- General Modal Overlay -->
-    <div id="modal-overlay" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+    <!-- General Modal Overlay (z-index updated to be on top) -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/50 z-[70] hidden flex items-center justify-center backdrop-blur-sm">
         <div class="bg-white dark:bg-gray-800 w-full max-w-sm mx-4 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700 transform transition-all">
             <div class="p-6">
                 <h3 id="modal-title" class="text-lg font-bold text-gray-900 dark:text-white mb-2"></h3>
@@ -377,7 +392,7 @@
                 </div>
 
                 <div class="mb-6">
-                    <textarea id="timer-edit-memo" placeholder="学習内容のメモ（任意）" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none" rows="2"></textarea>
+                    <textarea id="timer-edit-memo" onkeydown="handleMemoKey(event)" placeholder="学習内容のメモ（任意）" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none" rows="2"></textarea>
                 </div>
 
                 <div class="grid grid-cols-3 gap-3">
@@ -402,7 +417,7 @@
                 <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">今日の目標時間を設定</h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">今日1日の学習目標（分）を入力してください。</p>
                 <div class="flex items-center justify-center space-x-2 mb-6 bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4">
-                    <input type="number" id="daily-goal-input" class="w-24 text-center text-4xl font-bold bg-transparent border-b-2 border-sky-500 focus:border-sky-400 outline-none text-sky-600 dark:text-sky-400 transition-colors" min="1" step="10">
+                    <input type="number" id="daily-goal-input" onkeydown="handleGoalKey(event)" class="w-24 text-center text-4xl font-bold bg-transparent border-b-2 border-sky-500 focus:border-sky-400 outline-none text-sky-600 dark:text-sky-400 transition-colors" min="1" step="10">
                     <span class="text-gray-500 font-medium pt-3">分</span>
                 </div>
                 <div class="flex justify-end space-x-3">
@@ -413,73 +428,42 @@
         </div>
     </div>
 
-    <!-- Subject Menu Modal -->
-    <div id="subject-menu-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white dark:bg-gray-800 w-full max-w-sm mx-4 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700 transform transition-all">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 id="subject-menu-title" class="text-lg font-bold text-gray-900 dark:text-white truncate"></h3>
-                    <button onclick="closeSubjectMenu()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
-                </div>
-                <div class="space-y-3">
-                    <button onclick="openSubjectColorMenu()" class="w-full flex items-center p-3 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/50 dark:hover:bg-gray-700 transition">
-                        <div class="w-8 h-8 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-500 flex items-center justify-center mr-3"><i class="fa-solid fa-palette"></i></div>
-                        <span class="font-medium text-gray-700 dark:text-gray-200">色分け設定</span>
-                    </button>
-                    <button onclick="openSubjectHistory()" class="w-full flex items-center p-3 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/50 dark:hover:bg-gray-700 transition">
-                        <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-500 flex items-center justify-center mr-3"><i class="fa-solid fa-chart-line"></i></div>
-                        <span class="font-medium text-gray-700 dark:text-gray-200">学習履歴</span>
-                    </button>
-                    <button onclick="confirmDeleteSubject()" class="w-full flex items-center p-3 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 transition">
-                        <div class="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-500 flex items-center justify-center mr-3"><i class="fa-solid fa-trash-can"></i></div>
-                        <span class="font-medium text-rose-600 dark:text-rose-400">削除</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Subject Color Modal -->
-    <div id="subject-color-modal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white dark:bg-gray-800 w-full max-w-sm mx-4 rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-700">
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">色を選択</h3>
-            <div class="flex justify-around mb-6">
-                <button onclick="setSubjectColor('rose')" class="w-12 h-12 rounded-full bg-rose-500 hover:scale-110 transition shadow-lg shadow-rose-500/30 ring-2 ring-transparent focus:ring-rose-300"></button>
-                <button onclick="setSubjectColor('sky')" class="w-12 h-12 rounded-full bg-sky-500 hover:scale-110 transition shadow-lg shadow-sky-500/30 ring-2 ring-transparent focus:ring-sky-300"></button>
-                <button onclick="setSubjectColor('purple')" class="w-12 h-12 rounded-full bg-purple-500 hover:scale-110 transition shadow-lg shadow-purple-500/30 ring-2 ring-transparent focus:ring-purple-300"></button>
-                <button onclick="setSubjectColor('amber')" class="w-12 h-12 rounded-full bg-amber-500 hover:scale-110 transition shadow-lg shadow-amber-500/30 ring-2 ring-transparent focus:ring-amber-300"></button>
-                <button onclick="setSubjectColor('emerald')" class="w-12 h-12 rounded-full bg-emerald-500 hover:scale-110 transition shadow-lg shadow-emerald-500/30 ring-2 ring-transparent focus:ring-emerald-300"></button>
-            </div>
-            <div class="flex justify-end">
-                <button onclick="closeSubjectColorModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 rounded-lg text-sm font-medium">キャンセル</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Subject History Modal -->
-    <div id="subject-history-modal" class="fixed inset-0 bg-black/50 z-[60] hidden flex flex-col items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-gray-800 w-full max-w-lg rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]">
-            <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                <h3 id="sh-title" class="text-lg font-bold text-gray-900 dark:text-white"></h3>
-                <button onclick="closeSubjectHistory()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
-            </div>
-            <div class="p-4 flex-1 overflow-y-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <select id="sh-period-select" onchange="renderSubjectHistory()" class="bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 text-sm font-medium focus:outline-none">
-                        <option value="day">日ごと（時間別）</option>
-                        <option value="week">1週間</option>
-                        <option value="4week">4週間</option>
-                    </select>
-                    <div id="sh-date-nav" class="flex items-center space-x-2">
-                        <button onclick="changeShDate(-1)" class="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><i class="fa-solid fa-chevron-left"></i></button>
-                        <span id="sh-date-display" class="text-sm font-medium min-w-[80px] text-center"></span>
-                        <button onclick="changeShDate(1)" class="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><i class="fa-solid fa-chevron-right"></i></button>
+    <!-- Log Edit Modal -->
+    <div id="log-edit-modal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700 transform transition-all">
+            <div class="p-4 sm:p-6">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">学習記録の編集</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">科目</label>
+                        <select id="log-edit-subject" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"></select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">開始時間</label>
+                            <input type="time" id="log-edit-start" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">終了時間</label>
+                            <input type="time" id="log-edit-end" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">学習時間 (分)</label>
+                        <input type="number" id="log-edit-duration" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">メモ</label>
+                        <textarea id="log-edit-memo" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none" rows="2"></textarea>
                     </div>
                 </div>
-                <div class="relative h-56 w-full">
-                    <canvas id="sh-chart"></canvas>
+                <div class="flex justify-between mt-6">
+                    <button onclick="confirmDeleteLog()" class="px-3 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 rounded-lg text-sm font-medium transition"><i class="fa-solid fa-trash-can mr-1"></i>削除</button>
+                    <div class="space-x-2">
+                        <button onclick="closeLogEditModal()" class="px-3 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-lg text-sm font-medium transition">キャンセル</button>
+                        <button onclick="saveLogEdit()" class="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-sm font-bold transition shadow-md shadow-sky-500/20">保存</button>
+                    </div>
                 </div>
-                <div id="sh-total" class="mt-4 text-center text-sm font-bold text-gray-600 dark:text-gray-300"></div>
             </div>
         </div>
     </div>
@@ -499,7 +483,8 @@
                 soundEnabled: true,
                 pulseInterval: 25,
                 colorLogEnabled: false,
-                showStreak: true // ストリーク表示の有無
+                showStreak: true,
+                enterToSave: false
             },
             dailyGoals: {},
             folders: [],
@@ -521,6 +506,8 @@
         let timerInterval = null;
         let chartInstance = null; 
         let sortableInstance = null;
+
+        let logPressTimer = null; // 長押し用タイマー
 
         let lastPulseSec = 0; // 集中パルス用
         let toneStarted = false; // Tone.jsの初期化フラグ
@@ -716,6 +703,20 @@
             saveData();
             renderProgress();
             closeDailyGoalModal();
+        }
+
+        function handleGoalKey(e) {
+            if (appData.settings.enterToSave && e.key === 'Enter') {
+                e.preventDefault();
+                saveDailyGoal();
+            }
+        }
+
+        function handleMemoKey(e) {
+            if (appData.settings.enterToSave && e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                saveTimerRecord();
+            }
         }
 
         /* ==========================================================================
@@ -1063,7 +1064,10 @@
             appData.activeTimer = {
                 subjectId: subjectId,
                 subjectName: subjectName,
-                startTime: Date.now()
+                firstStartTime: Date.now(),
+                lastStartTime: Date.now(),
+                accumulatedSec: 0,
+                status: 'running'
             };
             lastPulseSec = 0;
 
@@ -1077,6 +1081,20 @@
                 document.getElementById('active-timer-bar').classList.remove('hidden');
                 document.getElementById('timer-subject-name').innerText = appData.activeTimer.subjectName;
                 
+                if (appData.activeTimer.status === 'paused') {
+                    document.getElementById('timer-pause-icon').className = 'fa-solid fa-play mr-1.5';
+                    document.getElementById('timer-pause-text').innerText = '再開';
+                    document.getElementById('timer-pause-btn').className = 'px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium text-sm transition shadow-sm flex items-center';
+                    document.getElementById('active-timer-bar').classList.remove('bg-sky-600', 'border-sky-500');
+                    document.getElementById('active-timer-bar').classList.add('bg-amber-600', 'border-amber-500');
+                } else {
+                    document.getElementById('timer-pause-icon').className = 'fa-solid fa-pause mr-1.5';
+                    document.getElementById('timer-pause-text').innerText = '一時停止';
+                    document.getElementById('timer-pause-btn').className = 'px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium text-sm transition shadow-sm flex items-center';
+                    document.getElementById('active-timer-bar').classList.remove('bg-amber-600', 'border-amber-500');
+                    document.getElementById('active-timer-bar').classList.add('bg-sky-600', 'border-sky-500');
+                }
+
                 if (timerInterval) clearInterval(timerInterval);
                 updateTimerDisplay();
                 timerInterval = setInterval(updateTimerDisplay, 1000);
@@ -1086,21 +1104,40 @@
             }
         }
 
+        function togglePauseTimer() {
+            if (!appData.activeTimer) return;
+            if (appData.activeTimer.status === 'running') {
+                const now = Date.now();
+                appData.activeTimer.accumulatedSec += Math.floor((now - appData.activeTimer.lastStartTime) / 1000);
+                appData.activeTimer.status = 'paused';
+            } else {
+                appData.activeTimer.lastStartTime = Date.now();
+                appData.activeTimer.status = 'running';
+            }
+            saveData();
+            checkActiveTimer();
+        }
+
         function updateTimerDisplay() {
             if (!appData.activeTimer) return;
-            const elapsedSec = Math.floor((Date.now() - appData.activeTimer.startTime) / 1000);
+            let elapsedSec = appData.activeTimer.accumulatedSec;
+            if (appData.activeTimer.status === 'running') {
+                elapsedSec += Math.floor((Date.now() - appData.activeTimer.lastStartTime) / 1000);
+            }
             const hours = String(Math.floor(elapsedSec / 3600)).padStart(2, '0');
             const minutes = String(Math.floor((elapsedSec % 3600) / 60)).padStart(2, '0');
             const seconds = String(elapsedSec % 60).padStart(2, '0');
             document.getElementById('timer-display').innerText = `${hours}:${minutes}:${seconds}`;
 
             // 集中パルス判定
-            const pInt = parseInt(appData.settings.pulseInterval) || 0;
-            if (pInt > 0) {
-                const pSec = pInt * 60;
-                if (elapsedSec > 0 && elapsedSec % pSec === 0 && elapsedSec !== lastPulseSec) {
-                    playSound('pulse');
-                    lastPulseSec = elapsedSec;
+            if (appData.activeTimer.status === 'running') {
+                const pInt = parseInt(appData.settings.pulseInterval) || 0;
+                if (pInt > 0) {
+                    const pSec = pInt * 60;
+                    if (elapsedSec > 0 && elapsedSec % pSec === 0 && elapsedSec !== lastPulseSec) {
+                        playSound('pulse');
+                        lastPulseSec = elapsedSec;
+                    }
                 }
             }
         }
@@ -1108,8 +1145,10 @@
         function stopTimer() {
             if (!appData.activeTimer) return;
             const now = Date.now();
-            const startTime = appData.activeTimer.startTime;
-            const durationSec = Math.floor((now - startTime) / 1000);
+            let durationSec = appData.activeTimer.accumulatedSec;
+            if (appData.activeTimer.status === 'running') {
+                durationSec += Math.floor((now - appData.activeTimer.lastStartTime) / 1000);
+            }
 
             if (durationSec < 5) {
                 showModal("タイマー終了", "計測時間が短すぎたため、記録されませんでした。", [
@@ -1126,12 +1165,15 @@
             
             playSound('stop');
 
+            const virtualStartTime = appData.activeTimer.firstStartTime;
+            const virtualEndTime = virtualStartTime + (durationSec * 1000);
+
             const mins = Math.max(1, Math.round(durationSec / 60));
             pendingTimerRecord = {
                 subjectId: appData.activeTimer.subjectId,
                 subjectName: appData.activeTimer.subjectName,
-                startTime: startTime,
-                endTime: now,
+                startTime: virtualStartTime,
+                endTime: virtualEndTime,
                 durationSec: durationSec,
                 originalMins: mins
             };
@@ -1246,6 +1288,97 @@
         /* ==========================================================================
            LOGS & HISTORY
            ========================================================================== */
+        function handleLogPressStart(logId) {
+            logPressTimer = setTimeout(() => openLogEdit(logId), 500);
+        }
+        function handleLogPressEnd() {
+            if (logPressTimer) clearTimeout(logPressTimer);
+        }
+
+        let editingLogId = null;
+
+        function openLogEdit(logId) {
+            handleLogPressEnd();
+            const log = appData.logs.find(l => l.id === logId);
+            if (!log) return;
+            editingLogId = logId;
+
+            const selectEl = document.getElementById('log-edit-subject');
+            selectEl.innerHTML = appData.subjects.map(s => `<option value="${s.id}" ${s.id === log.subjectId ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
+
+            const sDate = new Date(log.startTime);
+            const eDate = new Date(log.endTime);
+            document.getElementById('log-edit-start').value = formatTime(sDate);
+            document.getElementById('log-edit-end').value = formatTime(eDate);
+            
+            document.getElementById('log-edit-duration').value = Math.max(1, Math.round(log.durationSec / 60));
+            document.getElementById('log-edit-memo').value = log.memo || '';
+
+            document.getElementById('log-edit-modal').classList.remove('hidden');
+        }
+
+        function closeLogEditModal() {
+            document.getElementById('log-edit-modal').classList.add('hidden');
+            editingLogId = null;
+        }
+
+        function saveLogEdit() {
+            if (!editingLogId) return;
+            const log = appData.logs.find(l => l.id === editingLogId);
+            if (!log) return;
+
+            const subjectId = document.getElementById('log-edit-subject').value;
+            const subj = appData.subjects.find(s => s.id === subjectId);
+            if (subj) {
+                log.subjectId = subj.id;
+                log.subjectName = subj.name;
+            }
+
+            const startVal = document.getElementById('log-edit-start').value;
+            const endVal = document.getElementById('log-edit-end').value;
+            
+            const logDate = new Date(log.startTime);
+            const y = logDate.getFullYear();
+            const m = logDate.getMonth();
+            const d = logDate.getDate();
+
+            if (startVal) {
+                const [sh, sm] = startVal.split(':');
+                log.startTime = new Date(y, m, d, parseInt(sh), parseInt(sm)).getTime();
+            }
+            if (endVal) {
+                const [eh, em] = endVal.split(':');
+                log.endTime = new Date(y, m, d, parseInt(eh), parseInt(em)).getTime();
+            }
+
+            const durVal = parseInt(document.getElementById('log-edit-duration').value);
+            if (!isNaN(durVal) && durVal > 0) {
+                log.durationSec = durVal * 60;
+            }
+
+            log.memo = document.getElementById('log-edit-memo').value.trim() || null;
+
+            saveData();
+            closeLogEditModal();
+            renderLogs();
+            renderProgress();
+        }
+
+        function confirmDeleteLog() {
+            if (!editingLogId) return;
+            showModal("学習記録の削除", "本当にこの記録を削除しますか？", [
+                { text: "キャンセル", primary: false, onClick: closeModal },
+                { text: "削除する", primary: true, onClick: () => {
+                    appData.logs = appData.logs.filter(l => l.id !== editingLogId);
+                    saveData();
+                    closeModal();
+                    closeLogEditModal();
+                    renderLogs();
+                    renderProgress();
+                }}
+            ]);
+        }
+
         function setLogViewMode(mode) {
             if (!appData.settings) appData.settings = {};
             appData.settings.logViewMode = mode;
@@ -1331,15 +1464,17 @@
                         const timeRangeStr = `${formatTime(new Date(log.startTime))} ～ ${formatTime(new Date(log.endTime))}`;
                         const mins = Math.max(1, Math.round(log.durationSec / 60));
                         const memoHtml = log.memo ? `
-                            <div class="mt-3 flex items-start space-x-2 bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                            <div class="mt-3 flex items-start space-x-2 bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30 pointer-events-none">
                                 <i class="fa-regular fa-note-sticky text-amber-500 mt-0.5 text-sm"></i>
                                 <div class="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">${escapeHtml(log.memo)}</div>
                             </div>
                         ` : '';
                         
                         return `
-                            <div class="flex flex-col p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-800">
-                                <div class="flex items-center justify-between">
+                            <div class="flex flex-col p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-800 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                                 onmousedown="handleLogPressStart('${log.id}')" onmouseup="handleLogPressEnd()" onmouseleave="handleLogPressEnd()"
+                                 ontouchstart="handleLogPressStart('${log.id}')" ontouchend="handleLogPressEnd()" ontouchcancel="handleLogPressEnd()">
+                                <div class="flex items-center justify-between pointer-events-none">
                                     <div class="flex items-center space-x-3">
                                         <div class="w-2 h-8 bg-sky-500 rounded-full"></div>
                                         <div>
@@ -1752,6 +1887,7 @@
             if (appData.settings.pulseInterval === undefined) appData.settings.pulseInterval = 25;
             if (appData.settings.colorLogEnabled === undefined) appData.settings.colorLogEnabled = false;
             if (appData.settings.showStreak === undefined) appData.settings.showStreak = true;
+            if (appData.settings.enterToSave === undefined) appData.settings.enterToSave = false;
 
             const isDark = appData.settings.theme === 'dark';
             document.documentElement.classList.toggle('dark', isDark);
@@ -1762,6 +1898,7 @@
             document.getElementById('setting-color-log').checked = appData.settings.colorLogEnabled;
             document.getElementById('setting-pulse').value = appData.settings.pulseInterval;
             document.getElementById('setting-streak').checked = appData.settings.showStreak;
+            document.getElementById('setting-enter-save').checked = appData.settings.enterToSave;
             
             // Viewport/Mobile Setting
             const mobileMode = appData.settings.mobileMode || false;
