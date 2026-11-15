@@ -216,6 +216,15 @@
                     <input type="text" id="setting-custom-goal" onchange="updateSetting('customGoalName', this.value)" placeholder="目標名を入力" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
                 </div>
 
+                <!-- Cumulative Offset Setting -->
+                <div class="p-4 flex flex-col border-t border-gray-200 dark:border-gray-700">
+                    <div class="mb-2">
+                        <h3 class="font-medium text-sm">累計達成回数の補正（過去分など）</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">このアプリを使用する前の「〇」の回数などを入力して合算できます</p>
+                    </div>
+                    <input type="number" id="setting-cumulative-offset" onchange="updateSetting('cumulativeGoalCountOffset', this.value)" placeholder="例：100" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500" min="0">
+                </div>
+
                 <!-- Header Streak Setting -->
                 <div class="p-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
                     <div>
@@ -456,7 +465,7 @@
     <script>
         const STORAGE_KEY = 'study_tracker_data_v1';
         let appData = {
-            settings: { theme: 'dark', weekStart: 1, logViewMode: 'calendar', mobileMode: false, soundEnabled: true, pulseInterval: 25, colorLogEnabled: false, showStreak: true, enterToSave: false, customGoalName: '', showHeaderStreak: true },
+            settings: { theme: 'dark', weekStart: 1, logViewMode: 'calendar', mobileMode: false, soundEnabled: true, pulseInterval: 25, colorLogEnabled: false, showStreak: true, enterToSave: false, customGoalName: '', showHeaderStreak: true, cumulativeGoalCountOffset: 0 },
             dailyGoals: {}, folders: [], subjects: [], logs: [], dailyStatus: {}, activeTimer: null 
         };
 
@@ -556,19 +565,19 @@
             
             let streak = 0;
             let current = new Date();
-            let isTodayO = appData.dailyStatus[getFormattedDate(current)] === 'O';
+            let isTodayO = (appData.dailyStatus || {})[getFormattedDate(current)] === 'O';
             
             if (isTodayO) {
                 streak++;
-            } else if (appData.dailyStatus[getFormattedDate(current)] === 'X') {
+            } else if ((appData.dailyStatus || {})[getFormattedDate(current)] === 'X') {
                 streak = 0;
             }
 
-            if (appData.dailyStatus[getFormattedDate(current)] !== 'X') {
+            if ((appData.dailyStatus || {})[getFormattedDate(current)] !== 'X') {
                 current.setDate(current.getDate() - 1);
                 while (true) {
                     let dStr = getFormattedDate(current);
-                    if (appData.dailyStatus[dStr] === 'O') {
+                    if ((appData.dailyStatus || {})[dStr] === 'O') {
                         streak++;
                         current.setDate(current.getDate() - 1);
                     } else {
@@ -577,9 +586,22 @@
                 }
             }
             
-            if (streak > 0) {
+            let cumulativeOffset = parseInt(appData.settings.cumulativeGoalCountOffset) || 0;
+            let totalO = Object.values(appData.dailyStatus || {}).filter(v => v === 'O').length;
+            let cumulative = cumulativeOffset + totalO;
+            
+            if (streak > 0 || cumulative > 0) {
                 streakEl.classList.remove('hidden');
-                streakEl.innerHTML = `<span class="bg-gradient-to-r from-emerald-400 to-emerald-500 text-white text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full shadow-sm shadow-emerald-500/30 animate-pulse"><i class="fa-solid fa-fire mr-1"></i>${streak}日連続で${escapeHtml(appData.settings.customGoalName)}達成！</span>`;
+                let innerHtml = `<div class="flex items-center space-x-2 bg-gradient-to-r from-emerald-400 to-emerald-500 text-white px-3 py-1 rounded-full shadow-sm shadow-emerald-500/30">`;
+                if (streak > 0) {
+                    innerHtml += `<span class="text-[10px] sm:text-xs font-bold animate-pulse"><i class="fa-solid fa-fire mr-1"></i>${streak}日連続</span>`;
+                }
+                if (streak > 0 && cumulative > 0) innerHtml += `<span class="text-white/50 text-xs">|</span>`;
+                if (cumulative > 0) {
+                    innerHtml += `<span class="text-[10px] sm:text-xs font-bold">累計 ${cumulative} 回</span>`;
+                }
+                innerHtml += `</div>`;
+                streakEl.innerHTML = innerHtml;
             } else {
                 streakEl.classList.add('hidden');
             }
@@ -1007,8 +1029,14 @@
             const filteredLogs = appData.logs.filter(l => l.dateStr === selectedLogDate);
             const totalMins = Math.round(filteredLogs.reduce((acc, curr) => acc + curr.durationSec, 0) / 60);
             let goalMins = appData.dailyGoals && appData.dailyGoals[selectedLogDate] !== undefined ? appData.dailyGoals[selectedLogDate] : 180;
-            
-            document.getElementById('log-total-time').innerText = `${totalMins}分`;
+
+// ▼ ここから変更（時間を計算して文字列を作る）
+const hours = Math.floor(totalMins / 60);
+const mins = totalMins % 60;
+const totalTimeText = hours > 0 ? `${hours}時間${mins > 0 ? mins + '分' : ''}` : `${mins}分`;
+
+document.getElementById('log-total-time').innerText = totalTimeText;
+
             document.getElementById('log-goal-time').innerText = goalMins % 60 > 0 ? `${Math.floor(goalMins / 60)}時間${goalMins % 60}分` : `${Math.floor(goalMins / 60)}時間`;
             document.getElementById('log-session-count').innerText = `${filteredLogs.length}回`;
 
@@ -1093,15 +1121,16 @@
                     let statusHtml = '';
                     const ds = (appData.dailyStatus || {})[day.dateStr];
                     if (appData.settings.customGoalName && ds) {
-                        if (ds === 'O') statusHtml = '<span class="absolute top-0.5 right-1 text-emerald-500 font-bold text-[10px]">〇</span>';
-                        if (ds === 'T') statusHtml = '<span class="absolute top-0.5 right-1 text-amber-500 font-bold text-[10px]">△</span>';
-                        if (ds === 'X') statusHtml = '<span class="absolute top-0.5 right-1 text-rose-500 font-bold text-[10px]">×</span>';
+                        const baseCircle = "absolute -top-1.5 -right-1.5 w-5 h-5 sm:w-6 sm:h-6 bg-white dark:bg-gray-800 rounded-full shadow border border-gray-100 dark:border-gray-700 flex items-center justify-center z-10";
+                        if (ds === 'O') statusHtml = `<div class="${baseCircle}"><span class="text-emerald-500 font-bold text-[10px] sm:text-sm">〇</span></div>`;
+                        if (ds === 'T') statusHtml = `<div class="${baseCircle}"><span class="text-amber-500 font-bold text-[10px] sm:text-sm">△</span></div>`;
+                        if (ds === 'X') statusHtml = `<div class="${baseCircle}"><span class="text-rose-500 font-bold text-[10px] sm:text-sm">×</span></div>`;
                     }
 
                     html += `
                         <button onclick="onDateSelected('${day.dateStr}')" class="p-1 sm:p-2 rounded-xl ${bgClass} ${borderClass} flex flex-col items-center justify-center transition-transform hover:scale-105 relative group min-h-[48px] sm:min-h-[56px] w-full">
                             <span class="${day.mins > 0 ? 'text-xs' : 'text-sm'} font-semibold">${day.dayNum}</span>
-                            ${day.mins > 0 ? `<span class="text-[9px] sm:text-[10px] opacity-90 mt-0.5 leading-tight font-medium tracking-tighter w-full text-center whitespace-nowrap overflow-hidden text-ellipsis">${day.mins >= 60 ? `${Math.floor(day.mins/60)}時間${day.mins%60>0?day.mins%60+'分':''}` : `${day.mins}分`}</span>` : ''}
+                            ${day.mins > 0 ? `<span class="text-[10px] sm:text-[12px] opacity-90 mt-0.5 leading-tight font-medium tracking-tighter w-full text-center whitespace-nowrap overflow-hidden text-ellipsis">${day.mins >= 60 ? `${Math.floor(day.mins/60)}時間${day.mins%60>0?day.mins%60+'分':''}` : `${day.mins}分`}</span>` : ''}
                             ${day.isToday ? `<span class="absolute -top-1 -left-1 w-2.5 h-2.5 bg-rose-500 border-2 border-white dark:border-gray-800 rounded-full"></span>` : ''}
                             ${statusHtml}
                         </button>
@@ -1186,12 +1215,15 @@
             if (appData.settings.showStreak === undefined) appData.settings.showStreak = true;
             if (appData.settings.showHeaderStreak === undefined) appData.settings.showHeaderStreak = true;
             if (appData.settings.customGoalName === undefined) appData.settings.customGoalName = '';
+            if (appData.settings.cumulativeGoalCountOffset === undefined) appData.settings.cumulativeGoalCountOffset = 0;
             
             document.documentElement.classList.toggle('dark', appData.settings.theme === 'dark');
             ['theme', 'week-start', 'pulse'].forEach(k => { const el = document.getElementById(`setting-${k}`); if(el) el.value = appData.settings[k.replace('-start', 'Start').replace('pulse', 'pulseInterval')]; });
             ['sound', 'color-log', 'streak', 'header-streak', 'enter-save', 'mobile-mode'].forEach(k => { const el = document.getElementById(`setting-${k}`); if(el) el.checked = appData.settings[k.replace('-log','LogEnabled').replace('-streak','Streak').replace('header-streak', 'showHeaderStreak').replace('enter-save', 'enterToSave').replace('mobile-mode', 'mobileMode')]; });
             
             document.getElementById('setting-custom-goal').value = appData.settings.customGoalName;
+            const offsetEl = document.getElementById('setting-cumulative-offset');
+            if (offsetEl) offsetEl.value = appData.settings.cumulativeGoalCountOffset || 0;
             
             applyViewportSetting(appData.settings.mobileMode);
             setLogViewMode(appData.settings.logViewMode || 'calendar');
@@ -1201,12 +1233,16 @@
         function updateWeekStartSetting(val) { appData.settings.weekStart = parseInt(val); saveData(); if (activeTab === 'logs') renderLogs(); }
         function updateMobileModeSetting(val) { appData.settings.mobileMode = val; saveData(); applyViewportSetting(val); }
         function updateSetting(key, val) {
-            appData.settings[key] = key === 'pulseInterval' ? parseInt(val) || 0 : val;
+            if (key === 'pulseInterval' || key === 'cumulativeGoalCountOffset') {
+                appData.settings[key] = parseInt(val) || 0;
+            } else {
+                appData.settings[key] = val;
+            }
             if (key === 'soundEnabled' && val) initTone();
             saveData();
             if(activeTab === 'logs') renderLogs();
             if(key === 'showStreak') renderProgress();
-            if(key === 'showHeaderStreak' || key === 'customGoalName') renderHeaderStreak();
+            if(key === 'showHeaderStreak' || key === 'customGoalName' || key === 'cumulativeGoalCountOffset') renderHeaderStreak();
         }
         function applyViewportSetting(isMobile) { document.getElementById('viewport-meta').setAttribute('content', isMobile ? 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' : 'width=1024'); }
 
